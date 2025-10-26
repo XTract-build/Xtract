@@ -206,12 +206,17 @@ Each example demonstrates different transpilation features and patterns.
 
 ## Documentation
 
-### Current Version (v0.25)
-- **[CHANGELOG_v0.25.md](CHANGELOG_v0.25.md)** - Complete release notes with test details and implementation breakdown
-- **[transpiler_report_v0.25.md](transpiler_report_v0.25.md)** - Technical implementation report and architecture
-- **[test_results_v0.25.md](test_results_v0.25.md)** - Comprehensive test coverage and results
-- **[docs/IMPLEMENTATION_SUMMARY_v0.25.md](docs/IMPLEMENTATION_SUMMARY_v0.25.md)** - Detailed feature implementation summary
-- **[docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md)** - Getting started guide and usage instructions
+### 📚 General Documentation
+- **[docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md)** - Getting started guide and usage instructions (always up-to-date)
+
+### 📦 Version-Specific Documentation
+
+#### Current Version: v0.25 (Milestone 1) ✅
+- **[docs/v0.25/](docs/v0.25/)** - Complete documentation for v0.25
+  - [CHANGELOG.md](docs/v0.25/CHANGELOG.md) - Full release notes and features
+  - [IMPLEMENTATION_REPORT.md](docs/v0.25/IMPLEMENTATION_REPORT.md) - Technical architecture
+  - [TEST_RESULTS.md](docs/v0.25/TEST_RESULTS.md) - Test coverage and results
+  - [IMPLEMENTATION_SUMMARY.md](docs/v0.25/IMPLEMENTATION_SUMMARY.md) - Feature details
 
 ## Roadmap - Advanced Features (In Development)
 

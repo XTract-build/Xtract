@@ -341,12 +341,12 @@ This release represents the complete achievement of **Milestone 1** objectives:
 
 ## Previous Versions
 
-### [v0.2] - 2024-12-XX
+### [v0.2] - 2024-08-24
 
 Initial release with basic transpilation framework (structure only, no function bodies).
 
 ---
 
-*For detailed implementation notes, see [transpiler_report_v0.25.md](transpiler_report_v0.25.md)*  
-*For test results, see [test_results_v0.25.md](test_results_v0.25.md)*  
-*For technical summary, see [docs/IMPLEMENTATION_SUMMARY_v0.25.md](docs/IMPLEMENTATION_SUMMARY_v0.25.md)*
+*For detailed implementation notes, see [IMPLEMENTATION_REPORT.md](IMPLEMENTATION_REPORT.md)*  
+*For test results, see [TEST_RESULTS.md](TEST_RESULTS.md)*  
+*For technical summary, see [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)*
