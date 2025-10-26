@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+from typing import Optional
 import click
 
 from .transpiler import transpile
@@ -8,7 +9,7 @@ from .transpiler import transpile
 @click.command()
 @click.argument("input", type=click.Path(exists=True, dir_okay=False, path_type=Path))
 @click.argument("output", required=False, type=click.Path(dir_okay=False, path_type=Path))
-def main(input: Path, output: Path | None):
+def main(input: Path, output: Optional[Path]):
     """Transpile a Solidity file to MultiversX Rust.
 
     INPUT: Solidity .sol file path
