@@ -9,9 +9,9 @@ An open-source tool for converting Solidity smart contracts to MultiversX-compat
 
 XTract analyzes Solidity code and generates MultiversX Rust code that can be compiled and deployed on the MultiversX blockchain. It currently focuses on a core subset to enable fast iteration and testing.
 
-## Version 0.25 - Milestone 1 Complete ✅
+## Version 0.25 ✅
 
-This milestone introduces **statement-level code generation** with the following capabilities:
+This version introduces **statement-level code generation** with the following capabilities:
 - **Function body transpilation**: Converts `require()`, `emit()`, `return`, and assignments
 - **Error handling**: Maps Solidity `require()` → MultiversX `require!()` and `revert()` → `sc_panic!()`
 - **Event emission**: Properly converts Solidity events to MultiversX event calls
@@ -209,7 +209,7 @@ Each example demonstrates different transpilation features and patterns.
 For detailed documentation and a developer guide, see [DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md).
 For implementation report, see [transpiler_report.md](transpiler_report.md).
 
-## Milestone 2 - Advanced Features (In Development)
+## Roadmap - Advanced Features (In Development)
 
 - **Payable functions**: Auto-detect `payable` modifiers and add `#[payable("EGLD")]` annotations
 - **Complex storage patterns**: Full mapping support (nested mappings, arrays, dynamic types)

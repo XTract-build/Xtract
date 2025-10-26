@@ -1,10 +1,10 @@
 # Changelog
 
-## [v0.25] - 2025-10-26 - Milestone 1 Complete ✅
+## [v0.25] - 2025-10-26 ✅
 
-### 🎯 Milestone 1 Deliverables - ALL ACHIEVED
+### 🎯 Core Transpilation Engine - Complete
 
-**Core Transpilation Engine Development (2 months)**
+**Core Features Delivered:**
 - ✅ **Development environment setup**: Complete with Python packaging, version control, and CI/CD
 - ✅ **Core transpilation logic**: Functions, events, variables, structs, and error handling fully implemented
 - ✅ **Unit testing**: Comprehensive test suite with 100% success rate
@@ -12,11 +12,11 @@
 - ✅ **Repository setup**: Public GitHub repo with CI/CD pipeline
 - ✅ **Test cases**: 5+ Solidity contracts transpiled with complete body generation
 
-**KPIs - ALL MET AND EXCEEDED**
-- ✅ **≥90% unit test success** → **100% achieved** (5/5 tests passing)
-- ✅ **Public GitHub repository** → Live with badges and CI
-- ✅ **Documentation published** → Comprehensive guides and examples
-- ✅ **5+ test cases converted** → All 5 contracts with full body generation
+**Quality Metrics - ALL EXCEEDED**
+- ✅ **100% test success rate** (5/5 tests passing)
+- ✅ **Public GitHub repository** with CI/CD integration
+- ✅ **Comprehensive documentation** with guides and examples
+- ✅ **5 complete test contracts** with full body generation
 
 ---
 
@@ -313,9 +313,9 @@ This is a **fully functional, production-ready transpiler**:
 
 ---
 
-### 🎯 What's Next - Milestone 2 Preview
+### 🎯 What's Next - Roadmap
 
-Based on v0.25 foundation, next milestone will add:
+Based on v0.25 foundation, future versions will add:
 - 🔧 **Payable function detection**: Auto `#[payable("EGLD")]` annotation
 - 🗃️ **Complex storage**: Full nested mapping and dynamic array support  
 - 🔗 **Inheritance**: Contract inheritance and abstract contracts
