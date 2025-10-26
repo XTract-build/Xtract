@@ -97,21 +97,87 @@ XTract/
 
 ### Usage
 
-#### Python CLI (recommended for milestone 1)
+#### Quick Start Guide
+
+**1. Write Your Solidity Contract**
+
+You can write your Solidity contract anywhere:
+```bash
+# Create a new contract file
+touch my_contract.sol
+
+# Or use the examples in test_cases/
+vim test_cases/solidity/SimpleStorage.sol
+```
+
+**2. Run the Transpiler**
+
+```bash
+# Basic usage (output defaults to my_contract.rs)
+xtract my_contract.sol
+
+# Specify custom output location
+xtract my_contract.sol output/my_contract.rs
+
+# Transpile one of the built-in examples
+xtract test_cases/solidity/SimpleStorage.sol
+xtract test_cases/solidity/ERC20Token.sol
+```
+
+**3. Review Generated Code**
+
+```bash
+# View the transpiled MultiversX Rust contract
+cat my_contract.rs
+```
+
+#### Complete Example
+
+```bash
+# Create a simple Solidity contract
+cat > my_storage.sol << 'EOF'
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract MyStorage {
+    uint256 public value;
+    
+    event ValueChanged(uint256 indexed newValue);
+    
+    function setValue(uint256 newValue) public {
+        require(newValue > 0, "Value must be positive");
+        value = newValue;
+        emit ValueChanged(newValue);
+    }
+    
+    function getValue() public view returns (uint256) {
+        return value;
+    }
+}
+EOF
+
+# Transpile it
+xtract my_storage.sol
+
+# Check the generated MultiversX Rust code
+cat my_storage.rs
+```
+
+#### Python CLI (Recommended)
 
 ```bash
 pip install -e .[dev]
 xtract <solidity_file.sol> [output.rs]
 ```
 
-#### Legacy script
+#### Alternative Methods
 
+**Legacy script:**
 ```bash
 python3 legacy/simplified_transpiler.py <solidity_file.sol> <output_file.rs>
 ```
 
-#### Rust Implementation (WIP)
-
+**Rust Implementation (WIP):**
 ```bash
 cd rust-impl
 cargo run <solidity_file.sol>
@@ -119,7 +185,14 @@ cargo run <solidity_file.sol>
 
 ## Examples
 
-See the `test_cases/` directory for example Solidity contracts and their MultiversX Rust equivalents.
+The `test_cases/` directory contains 5 fully working examples:
+- **SimpleStorage.sol** - Basic storage with events and functions
+- **ERC20Token.sol** - Token implementation with transfers and approvals
+- **Voting.sol** - Voting system with proposals and time-based logic
+- **NFTMarketplace.sol** - NFT marketplace with offers and sales
+- **Crowdfunding.sol** - Campaign management with pledges and refunds
+
+Each example demonstrates different transpilation features and patterns.
 
 ## Documentation
 
