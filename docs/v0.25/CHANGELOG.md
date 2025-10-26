@@ -317,12 +317,42 @@ This is a **fully functional, production-ready transpiler**:
 
 ### 🎯 What's Next - Milestone 2
 
-Based on v0.25 foundation, Milestone 2 will add:
-- 🔧 **Payable function detection**: Auto `#[payable("EGLD")]` annotation
-- 🗃️ **Complex storage**: Full nested mapping and dynamic array support  
-- 🔗 **Inheritance**: Contract inheritance and abstract contracts
-- 📐 **Advanced expressions**: Complex arithmetic, conditionals, loops
-- 🎨 **Type system**: Custom types, enums, and advanced patterns
+**Milestone 2: Expanded Solidity Feature Support & Beta Release**
+
+Building on the solid v0.25 foundation, Milestone 2 will deliver:
+
+#### Core Features to Implement
+- 🗺️ **Mappings**: Full mapping support including nested and complex patterns
+- 🔐 **Modifiers**: Function modifiers and access control patterns
+- 🔗 **Basic Inheritance**: Contract inheritance structures and abstract contracts
+- 🛡️ **Enhanced Error Handling**: Improved diagnostic messaging and error reporting
+- 🔧 **Advanced Expressions**: Complex arithmetic, conditionals, and loops
+- 🎨 **Type System Enhancements**: Custom types, enums, and advanced patterns
+
+#### Testing & Quality Goals
+- 📊 **Extensive Integration Testing**: End-to-end validation across diverse contracts
+- ✅ **Expanded Test Coverage**: Target of **50+ Solidity test cases** successfully converted (currently 5)
+- 🔍 **Quality Assurance**: Comprehensive validation of all new features
+
+#### Release & Distribution
+- 📦 **Beta Release on npm**: Published package with easy installation
+- 📚 **Enhanced Documentation**: Covering **80% of transpiler features** (currently ~40%)
+- 🌐 **Community Engagement**: GitHub issues and community feedback mechanisms
+- 📖 **Installation Guides**: Complete integration and usage documentation
+
+#### Key Deliverables
+- ✅ Beta package published on npm with version management
+- ✅ Updated documentation covering expanded feature set
+- ✅ Installation and integration guides for developers
+- ✅ Community feedback and issue tracking system
+- ✅ At least 50 successfully transpiled test contracts
+- ✅ 80% feature documentation coverage
+
+#### Success Metrics (KPIs)
+- **Package Distribution**: Beta published on npm with public access
+- **Test Coverage**: ≥50 Solidity contracts converted successfully
+- **Documentation**: 80% of features documented with examples
+- **Community Adoption**: Active GitHub issues and feedback collection
 
 ---
 

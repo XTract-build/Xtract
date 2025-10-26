@@ -218,13 +218,25 @@ Each example demonstrates different transpilation features and patterns.
   - [TEST_RESULTS.md](docs/v0.25/TEST_RESULTS.md) - Test coverage and results
   - [IMPLEMENTATION_SUMMARY.md](docs/v0.25/IMPLEMENTATION_SUMMARY.md) - Feature details
 
-## Roadmap - Advanced Features (In Development)
+## Roadmap - Milestone 2 (In Development)
 
-- **Payable functions**: Auto-detect `payable` modifiers and add `#[payable("EGLD")]` annotations
-- **Complex storage patterns**: Full mapping support (nested mappings, arrays, dynamic types)
-- **Inheritance**: Support for contract inheritance and abstract contracts
-- **Advanced expressions**: Complex arithmetic, function calls, and conditional logic
-- **Type system**: Extended type mappings and custom type support
+**Milestone 2: Expanded Solidity Feature Support & Beta Release**
+
+### Core Features
+- **Mappings**: Full mapping support including nested and complex patterns
+- **Modifiers**: Function modifiers and access control patterns
+- **Basic Inheritance**: Contract inheritance structures and abstract contracts
+- **Enhanced Error Handling**: Improved diagnostic messaging and error reporting
+- **Advanced Expressions**: Complex arithmetic, conditionals, and loops
+- **Type System**: Extended type mappings and custom type support
+
+### Beta Release Goals
+- **npm Package**: Published beta with easy installation
+- **50+ Test Cases**: Expanded from current 5 to 50+ successfully converted contracts
+- **80% Documentation**: Comprehensive coverage of all features
+- **Community Feedback**: Active engagement through GitHub issues
+
+**Target**: Beta release with production-ready support for most common Solidity patterns
 
 ## Testing & Validation
 

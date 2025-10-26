@@ -101,13 +101,30 @@ Detailed feature implementation summary:
 
 ## What's Next (Milestone 2)
 
-The next version will build on this solid foundation to add:
-- Control flow implementation (if/else, loops)
-- Advanced storage patterns (VecMapper, complex nesting)
-- Contract inheritance and interfaces
-- Payable function auto-detection
-- External contract calls
-- ESDT token integration
+**Milestone 2: Expanded Solidity Feature Support & Beta Release**
+
+The next version will build on this solid foundation to deliver:
+
+### Core Features
+- **Mappings**: Full mapping support including nested and complex patterns
+- **Modifiers**: Support for function modifiers and access control
+- **Basic Inheritance**: Contract inheritance structures and abstract contracts
+- **Enhanced Error Handling**: Improved diagnostic messaging and error reporting
+
+### Testing & Quality
+- **Extensive Integration Testing**: End-to-end validation across diverse contracts
+- **Expanded Test Coverage**: At least 50 Solidity test cases successfully converted
+
+### Release & Distribution
+- **Beta Release**: Published package on npm with installation guide
+- **Community Engagement**: Gathering feedback via GitHub issues and community discussions
+- **Documentation**: Covering 80% of the transpiler's supported features
+
+### Deliverables
+- ✅ Beta package published on npm
+- ✅ Updated documentation with expanded feature coverage
+- ✅ Installation and integration guides
+- ✅ Community feedback mechanisms
 
 ---
 
