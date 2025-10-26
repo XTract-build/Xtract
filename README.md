@@ -15,8 +15,8 @@ This version introduces **statement-level code generation** with the following c
 - **Function body transpilation**: Converts `require()`, `emit()`, `return`, and assignments
 - **Error handling**: Maps Solidity `require()` → MultiversX `require!()` and `revert()` → `sc_panic!()`
 - **Event emission**: Properly converts Solidity events to MultiversX event calls
-- **Storage operations**: Handles variable assignments and basic storage access patterns
-- **Nested mapping support**: Converts `allowance[from][to]` → `self.allowance(&from, &to)`
+- **Storage operations**: Handles variable assignments and storage access patterns
+- **Single-level mapping support**: Converts `balanceOf[address]` → `self.balance_of(&address)` (tested and validated)
 
 **Test Coverage**: 100% unit test success across 5+ Solidity contracts with comprehensive body validation.
 
@@ -223,7 +223,8 @@ Each example demonstrates different transpilation features and patterns.
 **Milestone 2: Expanded Solidity Feature Support & Beta Release**
 
 ### Core Features
-- **Mappings**: Full mapping support including nested and complex patterns
+- **Nested Mappings**: Full support for `allowance[from][to]` patterns with comprehensive testing
+- **Complex Mappings**: Arrays of mappings, mappings of structs, and advanced patterns
 - **Modifiers**: Function modifiers and access control patterns
 - **Basic Inheritance**: Contract inheritance structures and abstract contracts
 - **Enhanced Error Handling**: Improved diagnostic messaging and error reporting

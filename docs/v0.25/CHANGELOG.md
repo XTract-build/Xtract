@@ -55,15 +55,17 @@ fn set_value(&self, new_value: BigUint<Self::Api>) {
 - **Revert statements**: `revert("message")` → `sc_panic!("message")`
 - **Custom errors**: Typed error struct generation (foundation for future enhancements)
 
-#### **3. Nested Mapping Support**
-Complex storage patterns now work correctly:
+#### **3. Single-Level Mapping Support**
+Tested and validated mapping patterns:
 ```solidity
 // Solidity
-allowance[from][to] = value;
+balanceOf[msg.sender] = value;
 
 // MultiversX Rust (generated)
-self.allowance(&from, &to).set(value);
+self.balance_of(&self.blockchain().get_caller()).set(value);
 ```
+
+**Note**: Nested mapping patterns (e.g., `allowance[from][to]`) have experimental regex-based support but are not yet tested or validated. Full nested mapping support will be implemented in Milestone 2.
 
 #### **4. Enhanced Type System**
 Extended type mappings covering:
@@ -87,7 +89,7 @@ Extended type mappings covering:
 | Contract | Test Function | Status | Validations |
 |----------|---------------|--------|-------------|
 | **SimpleStorage** | `test_simple_storage_shape()` | ✅ **PASS** | Structure, storage, events, body generation |
-| **ERC20Token** | `test_erc20_body_generation()` | ✅ **PASS** | Require statements, emit calls, nested mappings |
+| **ERC20Token** | `test_erc20_body_generation()` | ✅ **PASS** | Require statements, emit calls, single-level mappings |
 | **Voting** | `test_voting_body_generation()` | ✅ **PASS** | Complex logic, arrays, time-based operations |
 | **NFTMarketplace** | `test_nft_marketplace_body_generation()` | ✅ **PASS** | Structs, storage operations, events |
 | **Crowdfunding** | `test_crowdfunding_body_generation()` | ✅ **PASS** | Campaign logic, require statements, storage |
@@ -109,7 +111,7 @@ Extended type mappings covering:
 ✅ Basic structure: #![no_std], imports, contract trait
 ✅ Storage mappers: name, symbol, decimals, totalSupply
 ✅ Require statements: require!(balance >= value, "Insufficient balance");
-✅ Nested mappings: self.allowance(&from, &to)
+✅ Single-level mappings: self.balance_of(&caller)
 ✅ Event emission: self.transfer_event(caller, to, value);
 ✅ Constructor body: self.name().set(_name);
 ```
@@ -219,7 +221,8 @@ pytest tests/test_transpiler_core.py::test_simple_storage_shape -v
 
 **Parsing Capabilities:**
 - ✅ Multi-line function bodies with complex logic
-- ✅ Nested mapping access patterns
+- ✅ Single-level mapping access patterns (tested)
+- ⚠️ Nested mapping access patterns (experimental, not validated)
 - ✅ Constructor parameter handling
 - ✅ Event parameter parsing with indexed detection
 - ✅ Struct field type conversion
@@ -232,18 +235,17 @@ Handles complex transformations:
 msg.sender → self.blockchain().get_caller()
 address(0) → ManagedAddress::zero()
 block.timestamp → self.blockchain().get_block_timestamp()
-balanceOf[sender] → self.balance_of(&sender)
-allowance[from][to] → self.allowance(&from, &to)
+balanceOf[sender] → self.balance_of(&sender)  [✅ tested]
 array.length → array.len()
 value = newValue → self.value().set(newValue)
 ```
 
 #### **Storage Mapper Generation**
 Intelligent mapper type selection:
-- **Simple variables** → `SingleValueMapper<T>`
-- **Single mappings** → `MapMapper<K, V>` with key parameter
-- **Nested mappings** → `MapMapper<K, V>` with multiple key parameters
-- **Arrays** → `VecMapper<T>` (foundation for future work)
+- **Simple variables** → `SingleValueMapper<T>` ✅ tested
+- **Single mappings** → `MapMapper<K, V>` with key parameter ✅ tested
+- **Nested mappings** → Experimental support (not validated) ⚠️
+- **Arrays** → `VecMapper<T>` (foundation for future work) 🔄
 
 ---
 
@@ -322,7 +324,8 @@ This is a **fully functional, production-ready transpiler**:
 Building on the solid v0.25 foundation, Milestone 2 will deliver:
 
 #### Core Features to Implement
-- 🗺️ **Mappings**: Full mapping support including nested and complex patterns
+- 🗺️ **Nested Mappings**: Full support for `allowance[from][to]` patterns with proper testing
+- 🗺️ **Complex Mappings**: Arrays of mappings, mappings of structs, and other advanced patterns
 - 🔐 **Modifiers**: Function modifiers and access control patterns
 - 🔗 **Basic Inheritance**: Contract inheritance structures and abstract contracts
 - 🛡️ **Enhanced Error Handling**: Improved diagnostic messaging and error reporting

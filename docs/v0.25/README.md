@@ -56,9 +56,10 @@ Detailed feature implementation summary:
 ### Core Features ✅
 - Complete statement-level transpilation (require, emit, return, assignments)
 - Full function body generation with working implementations
-- Advanced storage support including nested mappings
+- Single-level mapping support (tested and validated)
 - Comprehensive error handling (require → require!, revert → sc_panic!)
 - Event system with proper emission in function bodies
+- **Note**: Nested mappings have experimental code but are not yet tested (planned for Milestone 2)
 
 ### Quality Metrics ✅
 - **100% test success rate** (target: ≥90%)
@@ -106,7 +107,8 @@ Detailed feature implementation summary:
 The next version will build on this solid foundation to deliver:
 
 ### Core Features
-- **Mappings**: Full mapping support including nested and complex patterns
+- **Nested Mappings**: Full support for `allowance[from][to]` patterns with comprehensive testing
+- **Complex Mappings**: Arrays of mappings, mappings of structs, and advanced patterns
 - **Modifiers**: Support for function modifiers and access control
 - **Basic Inheritance**: Contract inheritance structures and abstract contracts
 - **Enhanced Error Handling**: Improved diagnostic messaging and error reporting
