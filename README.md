@@ -114,14 +114,14 @@ vim test_cases/solidity/SimpleStorage.sol
 
 ```bash
 # Basic usage (output defaults to my_contract.rs)
-xtract my_contract.sol
+python3 -m xtract.cli my_contract.sol
 
 # Specify custom output location
-xtract my_contract.sol output/my_contract.rs
+python3 -m xtract.cli my_contract.sol output/my_contract.rs
 
 # Transpile one of the built-in examples
-xtract test_cases/solidity/SimpleStorage.sol
-xtract test_cases/solidity/ERC20Token.sol
+python3 -m xtract.cli test_cases/solidity/SimpleStorage.sol
+python3 -m xtract.cli test_cases/solidity/ERC20Token.sol
 ```
 
 **3. Review Generated Code**
@@ -157,7 +157,7 @@ contract MyStorage {
 EOF
 
 # Transpile it
-xtract my_storage.sol
+python3 -m xtract.cli my_storage.sol
 
 # Check the generated MultiversX Rust code
 cat my_storage.rs
@@ -166,9 +166,19 @@ cat my_storage.rs
 #### Python CLI (Recommended)
 
 ```bash
+# Install the package
 pip install -e .[dev]
+
+# Use the transpiler (two options):
+
+# Option 1: Python module (works immediately, recommended)
+python3 -m xtract.cli <solidity_file.sol> [output.rs]
+
+# Option 2: Direct command (if Python bin is in PATH)
 xtract <solidity_file.sol> [output.rs]
 ```
+
+**Note:** If `xtract` command is not found, use Option 1 or add `~/Library/Python/3.9/bin` to your PATH.
 
 #### Alternative Methods
 
