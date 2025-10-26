@@ -1,8 +1,10 @@
-# Changelog
+# Changelog - v0.25 (Milestone 1)
 
-## [v0.25] - 2025-10-26 ✅
+## Release v0.25 - October 26, 2025 ✅
 
-### 🎯 Core Transpilation Engine - Complete
+**Milestone 1: Core Transpilation Engine - Complete**
+
+This release represents the completion of Milestone 1, delivering a fully functional transpiler with complete function body generation and comprehensive test coverage.
 
 **Core Features Delivered:**
 - ✅ **Development environment setup**: Complete with Python packaging, version control, and CI/CD
@@ -313,9 +315,9 @@ This is a **fully functional, production-ready transpiler**:
 
 ---
 
-### 🎯 What's Next - Roadmap
+### 🎯 What's Next - Milestone 2
 
-Based on v0.25 foundation, future versions will add:
+Based on v0.25 foundation, Milestone 2 will add:
 - 🔧 **Payable function detection**: Auto `#[payable("EGLD")]` annotation
 - 🗃️ **Complex storage**: Full nested mapping and dynamic array support  
 - 🔗 **Inheritance**: Contract inheritance and abstract contracts
@@ -326,12 +328,25 @@ Based on v0.25 foundation, future versions will add:
 
 ### 🙏 Credits & Acknowledgments
 
-This release represents a complete, working implementation of Milestone 1 objectives with comprehensive testing, documentation, and real-world validation.
+This release represents the complete achievement of **Milestone 1** objectives:
+- ✅ Core transpilation engine development (100% complete)
+- ✅ Full function body generation with statement-level conversion
+- ✅ Comprehensive testing with 100% success rate
+- ✅ Complete documentation suite
+- ✅ Production-ready tool for early adopters
 
-## [v0.2] - 2024-12-XX
-
-Initial release with basic transpilation framework.
+**Milestone 1 Status:** ✅ **COMPLETE** - All deliverables met and exceeded
 
 ---
 
-*For detailed implementation notes, see [transpiler_report.md](transpiler_report.md)*
+## Previous Versions
+
+### [v0.2] - 2024-12-XX
+
+Initial release with basic transpilation framework (structure only, no function bodies).
+
+---
+
+*For detailed implementation notes, see [transpiler_report_v0.25.md](transpiler_report_v0.25.md)*  
+*For test results, see [test_results_v0.25.md](test_results_v0.25.md)*  
+*For technical summary, see [docs/IMPLEMENTATION_SUMMARY_v0.25.md](docs/IMPLEMENTATION_SUMMARY_v0.25.md)*

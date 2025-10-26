@@ -206,8 +206,12 @@ Each example demonstrates different transpilation features and patterns.
 
 ## Documentation
 
-For detailed documentation and a developer guide, see [DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md).
-For implementation report, see [transpiler_report.md](transpiler_report.md).
+### Current Version (v0.25)
+- **[CHANGELOG_v0.25.md](CHANGELOG_v0.25.md)** - Complete release notes with test details and implementation breakdown
+- **[transpiler_report_v0.25.md](transpiler_report_v0.25.md)** - Technical implementation report and architecture
+- **[test_results_v0.25.md](test_results_v0.25.md)** - Comprehensive test coverage and results
+- **[docs/IMPLEMENTATION_SUMMARY_v0.25.md](docs/IMPLEMENTATION_SUMMARY_v0.25.md)** - Detailed feature implementation summary
+- **[docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md)** - Getting started guide and usage instructions
 
 ## Roadmap - Advanced Features (In Development)
 
