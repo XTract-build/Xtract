@@ -8,18 +8,72 @@ This tool allows you to convert Solidity smart contracts to MultiversX-compatibl
 
 The transpiler supports the following Solidity features:
 
-- Basic contract structure
-- Functions (public, private, view)
-- State variables and mappings
-- Events
-- Structs and enums
-- Modifiers (converted to functions)
-- Error handling (require, revert)
-- Basic control flow (if, while, for)
+- **Basic contract structure**: Contract declarations, constructors, state variables
+- **Functions**: Public/private functions with view/endpoint detection
+- **State variables and mappings**: Simple variables and mapping patterns
+- **Events**: Event declarations and emission in function bodies
+- **Structs**: Complex data structures with proper MultiversX derivations
+- **Error handling**: `require()`, `revert()` statements converted to MultiversX patterns
+- **Function bodies**: Statement-level transpilation including assignments, returns, and basic expressions
+- **Storage operations**: Variable assignments and basic storage access patterns
+
+### Current Limitations
+
+- **Payable functions**: Not yet auto-detected (manual `#[payable("EGLD")]` annotation needed)
+- **Complex expressions**: Advanced arithmetic and function calls may need manual review
+- **Inheritance**: Contract inheritance not supported (flatten contracts first)
+- **Advanced mappings**: Some nested mapping patterns may require manual adjustment
+- **Type system**: Limited support for complex custom types
+
+## Early Adopter Guide
+
+### Getting Started with XTract v0.25
+
+1. **Install the tool**:
+   ```bash
+   git clone https://github.com/kaankacar/XTract.git
+   cd XTract
+   pip install -e .[dev]
+   ```
+
+2. **Test basic functionality**:
+   ```bash
+   # Transpile a simple contract
+   xtract test_cases/solidity/SimpleStorage.sol
+
+   # Check the generated Rust code
+   cat SimpleStorage.rs
+   ```
+
+3. **Review and adjust**:
+   - Check function bodies for correctness
+   - Add manual `#[payable("EGLD")]` annotations where needed
+   - Review mapping access patterns
+
+### Supported Migration Patterns
+
+#### ✅ Working Examples
+- **Simple Storage**: Direct variable assignments and getters
+- **ERC20 Transfers**: Basic transfer logic with require statements
+- **Events**: All event emission patterns
+- **Error Handling**: Require/revert statement conversion
+- **Structs**: Complex data structures
+
+#### ⚠️ Requires Adaptation
+- **Approvals**: Replace `approve`/`transferFrom` with direct transfers or escrow
+- **Payable**: Add `#[payable("EGLD")]` manually to payable functions
+- **Complex Logic**: Review generated expressions for correctness
+
+### Best Practices
+
+1. **Start Simple**: Begin with basic contracts before complex DeFi protocols
+2. **Review Output**: Always check generated function bodies
+3. **Test Thoroughly**: Use MultiversX testing framework to validate behavior
+4. **Pattern Adaptation**: Be prepared to adjust Ethereum patterns for MultiversX's push model
 
 ## Python package structure
 
-The repository includes a minimal Python package `xtract` implementing the core transpilation pipeline for milestone 1:
+The repository includes a minimal Python package `xtract` implementing the core transpilation pipeline:
 
 - `xtract/transpiler.py`: core logic for parsing Solidity surface patterns and emitting MultiversX Rust
 - `xtract/cli.py`: CLI entrypoint (`xtract <input.sol> [output.rs]`)
