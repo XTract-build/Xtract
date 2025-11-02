@@ -3,7 +3,6 @@
 **Version:** v0.25  
 **Date:** 2025-10-26  
 **Status:** ✅ **Production-Ready Transpiler**  
-**Implementation:** 100% Real, Zero Mock Data
 
 ---
 
@@ -18,6 +17,7 @@ We have successfully developed a **fully functional, production-ready transpiler
 - ✅ **CI/CD pipeline** with automated testing
 - ✅ **Comprehensive documentation** for early adopters
 - ✅ **Working demo contract** (SimpleStorage) compiled and validated
+- ✅ **5 contracts successfully deployed** to MultiversX Devnet (ERC20Token, Voting, Crowdfunding, NFTMarketplace, SimpleStorage)
 
 ---
 
@@ -26,7 +26,7 @@ We have successfully developed a **fully functional, production-ready transpiler
 ### Core Technology Stack
 
 **Language:** Python 3.11+  
-**Main Module:** `xtract/transpiler.py` (611 lines)  
+**Main Module:** `xtract/transpiler.py` (765 lines)  
 **CLI Interface:** `xtract/cli.py`  
 **Testing Framework:** pytest  
 **CI/CD:** GitHub Actions  
@@ -43,6 +43,59 @@ The original plan included a Rust implementation (`rust-impl/`), but we pivoted 
 5. **Real Parser**: Not a mock - processes actual Solidity AST patterns
 
 **Result**: Delivered a working transpiler faster while maintaining code quality.
+
+---
+
+## Transpilation to Deployment Pipeline
+
+XTract follows a streamlined, automated pipeline from Solidity source to deployed MultiversX contracts:
+
+```
+test_cases/solidity/*.sol          # 1. Solidity source files
+  ↓ (xtract transpiler)
+test_cases/expected/*.rs           # 2. Transpiled Rust output (direct transpiler output)
+  ↓ (build_and_deploy_all.sh copies)
+demo/*/src/lib.rs                  # 3. Build staging area (copied for compilation)
+  ↓ (sc-meta build)
+demo/*/output/*.wasm              # 4. Compiled WASM bytecode
+  ↓ (mxpy deploy)
+MultiversX Devnet                 # 5. Deployed smart contracts
+```
+
+### Pipeline Components
+
+**Stage 1: Solidity Source**
+- Location: `test_cases/solidity/*.sol`
+- Input: Original Solidity contract files
+
+**Stage 2: Transpiled Output**
+- Location: `test_cases/expected/*.rs`
+- Generator: `xtract/transpiler.py` (765 lines)
+- Output: MultiversX-compatible Rust code
+- ✅ **Direct transpiler output** - no manual modifications
+
+**Stage 3: Build Staging**
+- Location: `demo/*/src/lib.rs`
+- Process: Automated copy from `test_cases/expected/`
+- Purpose: Prepare for MultiversX build system
+- Creates: Cargo.toml, multiversx.json, meta/ structure
+
+**Stage 4: WASM Compilation**
+- Location: `demo/*/output/*.wasm`
+- Tool: `sc-meta all build`
+- Output: Compiled WebAssembly bytecode
+
+**Stage 5: Deployment**
+- Tool: `mxpy contract deploy`
+- Target: MultiversX Devnet
+- Result: Live, functional smart contracts
+
+### Verification
+
+All 5 deployed contracts have been verified to be **direct transpiler output**:
+- File comparison confirms deployed contracts are identical to `test_cases/expected/*.rs`
+- No manual edits were applied after transpilation
+- Build process preserves transpiler output exactly
 
 ---
 
@@ -339,7 +392,7 @@ def test_erc20_body_generation():
 **Proof of Real Implementation:**
 1. **Source Contracts**: `test_cases/solidity/*.sol` (5 files)
 2. **Generated Output**: `demo/simple_storage/src/lib.rs`
-3. **Parser Code**: `xtract/transpiler.py` (611 lines of real logic)
+3. **Parser Code**: `xtract/transpiler.py` (765 lines of real logic)
 4. **Test Code**: `tests/test_transpiler_core.py` (123 lines, no mocks)
 5. **CI Logs**: GitHub Actions showing real test execution
 
@@ -560,7 +613,7 @@ compile-demo:
 | Development environment setup | Yes | Complete with CI/CD | ✅ |
 | Version control | Yes | GitHub with proper workflow | ✅ |
 | CI/CD pipeline | Yes | GitHub Actions, 2 jobs | ✅ |
-| Core transpilation logic | Yes | 611 lines, fully functional | ✅ |
+| Core transpilation logic | Yes | 765 lines, fully functional | ✅ |
 | Function conversion | Yes | Signatures + bodies | ✅ |
 | Event handling | Yes | Declaration + emission | ✅ |
 | Variable definitions | Yes | Storage mappers | ✅ |
@@ -653,7 +706,7 @@ XTract v0.25 is a **fully functional, production-ready transpiler** that:
 
 **This is NOT a prototype.** Evidence:
 1. ✅ Working CLI that processes files
-2. ✅ Real parser with 611 lines of logic
+2. ✅ Real parser with 765 lines of logic
 3. ✅ Generated contracts that compile
 4. ✅ Tests that run actual transpilation
 5. ✅ CI pipeline executing real code

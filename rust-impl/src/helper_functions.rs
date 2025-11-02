@@ -18,6 +18,57 @@ pub fn transform_expression(expr: &Expression) -> Result<RustExpression> {
             vals.iter().map(|s| s.string.clone()).collect::<Vec<_>>().join("")
         )),
         Expression::BoolLiteral(_, value) => Ok(RustExpression::BoolLiteral(*value)),
+        
+        // Handle member access (e.g., msg.sender)
+        Expression::MemberAccess(_, expr, member) => {
+            let expr_transformed = transform_expression(expr)?;
+            // Handle special variables
+            if let RustExpression::Identifier(ref var_name) = expr_transformed {
+                if var_name == "msg" && member.name == "sender" {
+                    return Ok(RustExpression::Identifier("self.blockchain().get_caller()".to_string()));
+                }
+            }
+            // Handle struct field access
+            Ok(RustExpression::MemberAccess {
+                expression: Box::new(expr_transformed),
+                member: member.name.clone(),
+            })
+        }
+        
+        // Handle function calls (e.g., address(0))
+        Expression::FunctionCall(_, func, args) => {
+            if let Expression::Type(_, ty) = func.as_ref() {
+                // Type conversion like address(0)
+                if let Type::Address | Type::AddressPayable | Type::Payable = ty {
+                    if let Some(arg) = args.first() {
+                        if let Expression::NumberLiteral(_, num, _, _) = arg {
+                            if num == "0" {
+                                return Ok(RustExpression::Identifier("ManagedAddress::zero()".to_string()));
+                            }
+                        }
+                    }
+                }
+            }
+            // For other function calls, transform the function and arguments
+            let func_expr = transform_expression(func)?;
+            let args_exprs = args.iter()
+                .map(transform_expression)
+                .collect::<Result<Vec<_>>>()?;
+            
+            // For now, create an identifier representing the function call
+            // This will need more sophisticated handling for different function types
+            Ok(RustExpression::Identifier(format!("{}({:?})", 
+                match func_expr {
+                    RustExpression::Identifier(name) => name,
+                    _ => format!("{:?}", func_expr),
+                },
+                args_exprs.iter().map(|e| match e {
+                    RustExpression::Identifier(name) => name.clone(),
+                    _ => format!("{:?}", e),
+                }).collect::<Vec<_>>().join(", ")
+            )))
+        }
+        
         Expression::Add(_, left, right) => Ok(RustExpression::BinaryOperation {
             left: Box::new(transform_expression(left)?),
             operator: "+".to_string(),
@@ -38,6 +89,37 @@ pub fn transform_expression(expr: &Expression) -> Result<RustExpression> {
             operator: "/".to_string(),
             right: Box::new(transform_expression(right)?),
         }),
+        // Handle comparison operators
+        Expression::MoreEqual(_, left, right) => Ok(RustExpression::BinaryOperation {
+            left: Box::new(transform_expression(left)?),
+            operator: ">=".to_string(),
+            right: Box::new(transform_expression(right)?),
+        }),
+        Expression::LessEqual(_, left, right) => Ok(RustExpression::BinaryOperation {
+            left: Box::new(transform_expression(left)?),
+            operator: "<=".to_string(),
+            right: Box::new(transform_expression(right)?),
+        }),
+        Expression::More(_, left, right) => Ok(RustExpression::BinaryOperation {
+            left: Box::new(transform_expression(left)?),
+            operator: ">".to_string(),
+            right: Box::new(transform_expression(right)?),
+        }),
+        Expression::Less(_, left, right) => Ok(RustExpression::BinaryOperation {
+            left: Box::new(transform_expression(left)?),
+            operator: "<".to_string(),
+            right: Box::new(transform_expression(right)?),
+        }),
+        Expression::Equal(_, left, right) => Ok(RustExpression::BinaryOperation {
+            left: Box::new(transform_expression(left)?),
+            operator: "==".to_string(),
+            right: Box::new(transform_expression(right)?),
+        }),
+        Expression::NotEqual(_, left, right) => Ok(RustExpression::BinaryOperation {
+            left: Box::new(transform_expression(left)?),
+            operator: "!=".to_string(),
+            right: Box::new(transform_expression(right)?),
+        }),
         _ => Err(anyhow!("Unsupported expression type {:?}", expr)),
     }
 }
@@ -45,7 +127,13 @@ pub fn transform_expression(expr: &Expression) -> Result<RustExpression> {
 pub fn convert_expression_to_type(expr: &solang_parser::pt::Expression) -> Result<solang_parser::pt::Type, anyhow::Error> {
     match expr {
         solang_parser::pt::Expression::Type(_, ty) => Ok(ty.clone()),
-        _ => Err(anyhow::anyhow!("Cannot convert expression to type")),
+        solang_parser::pt::Expression::Variable(id) => {
+            // Handle user-defined types like Campaign, NFT, etc.
+            // For now, we'll need to handle struct types specially
+            // This is a simplified approach - in a full implementation, we'd need symbol resolution
+            Err(anyhow::anyhow!("Cannot convert variable to type: {}", id.name))
+        }
+        _ => Err(anyhow::anyhow!("Cannot convert expression to type: {:?}", expr)),
     }
 }
 

@@ -8,6 +8,7 @@ pub enum RustVisibility {
 pub struct RustParameter {
     pub name: String,
     pub type_name: String,
+    pub indexed: bool,
 }
 
 #[derive(Debug, Clone)]

@@ -39,10 +39,13 @@ pub fn transform_statement(stmt: &pt::Statement) -> Result<RustNode> {
                     pt::Expression::Variable(identifier) => identifier.name.clone(),
                     _ => return Err(anyhow!("Unsupported function in Emit")),
                 };
+                // For events, arguments should be passed as references
+                // We'll handle the reference in the code generation
                 let transformed_args = args
                     .iter()
                     .map(transform_expression) // Transform each argument
                     .collect::<Result<Vec<_>>>()?;
+                // Add _event suffix to avoid conflict with function names
                 Ok(RustNode::Expression(RustExpression::FunctionCall {
                     function: Box::new(RustExpression::Identifier(format!(
                         "self.{}_event",
@@ -70,6 +73,27 @@ pub fn transform_statement(stmt: &pt::Statement) -> Result<RustNode> {
                         pt::Expression::Variable(id) => id.name.clone(),
                         _ => return Err(anyhow!("Unsupported function call")),
                     };
+                    
+                    // Handle require statement
+                    if func_name == "require" {
+                        if args.len() >= 1 {
+                            let condition = transform_expression(&args[0])?;
+                            let message = if args.len() >= 2 {
+                                if let Ok(RustExpression::StringLiteral(msg)) = transform_expression(&args[1]) {
+                                    Some(RustExpression::StringLiteral(msg))
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            };
+                            return Ok(RustNode::Require {
+                                condition,
+                                message,
+                            });
+                        }
+                    }
+                    
                     let transformed_args = args
                         .iter()
                         .map(|arg| transform_expression(arg)) // Process each argument with `transform_expression`
@@ -162,6 +186,18 @@ pub fn transform_statement(stmt: &pt::Statement) -> Result<RustNode> {
                     })
                 }
 
+                // Handle member access (e.g., msg.sender) - delegate to transform_expression
+                pt::Expression::MemberAccess(_, expr, _) => {
+                    // Transform the full member access expression, not just the inner expr
+                    match transform_expression(expr) {
+                        Ok(_) => Ok(RustNode::Expression(transform_expression(expr)?)),
+                        Err(_) => {
+                            // Try transforming the full member access
+                            Ok(RustNode::Expression(transform_expression(expr)?))
+                        }
+                    }
+                }
+                
                 // Handle variable identifiers
                 pt::Expression::Variable(id) => Ok(RustNode::Expression(
                     RustExpression::Identifier(id.name.clone()),
@@ -172,8 +208,23 @@ pub fn transform_statement(stmt: &pt::Statement) -> Result<RustNode> {
                     RustExpression::NumberLiteral(value.clone()),
                 )),
 
-                // Handle unsupported expressions
-                _ => Err(anyhow!("Unsupported expression statement {}", expr)),
+                // Handle comparison and other expressions
+                pt::Expression::MoreEqual(_, left, right)
+                | pt::Expression::LessEqual(_, left, right)
+                | pt::Expression::More(_, left, right)
+                | pt::Expression::Less(_, left, right)
+                | pt::Expression::Equal(_, left, right)
+                | pt::Expression::NotEqual(_, left, right) => {
+                    Ok(RustNode::Expression(transform_expression(expr)?))
+                }
+
+                // Handle unsupported expressions - try transform_expression first
+                _ => {
+                    match transform_expression(expr) {
+                        Ok(expr) => Ok(RustNode::Expression(expr)),
+                        Err(_) => Err(anyhow!("Unsupported expression statement {}", expr)),
+                    }
+                }
             }
         }
 
@@ -210,8 +261,8 @@ pub fn transform_statement(stmt: &pt::Statement) -> Result<RustNode> {
                 None
             };
 
-            Ok(RustNode::IfStatement {
-                condition: Box::new(condition),
+            Ok(RustNode::If {
+                condition,
                 body,
                 else_body,
             })
@@ -231,8 +282,8 @@ pub fn transform_statement(stmt: &pt::Statement) -> Result<RustNode> {
                 vec![transform_statement(body)?] // Treat as a single statement
             };
 
-            Ok(RustNode::WhileStatement {
-                condition: Box::new(condition),
+            Ok(RustNode::While {
+                condition,
                 body,
             })
         }
@@ -274,10 +325,10 @@ pub fn transform_statement(stmt: &pt::Statement) -> Result<RustNode> {
                 Vec::new()
             };
 
-            Ok(RustNode::ForStatement {
+            Ok(RustNode::For {
                 init,
-                condition,
-                increment,
+                condition: condition.map(|c| *c),
+                update: increment,
                 body,
             })
         }

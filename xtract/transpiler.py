@@ -150,6 +150,7 @@ class Transpiler:
 
     def convert_event(self, event: dict) -> str:
         params: list[str] = []
+        non_indexed_count = 0
         if event["params"]:
             for raw in event["params"].split(","):
                 s = raw.strip()
@@ -161,9 +162,24 @@ class Transpiler:
                 if len(parts) < 2:
                     continue
                 t, n = parts[0], parts[1]
+                # Map type and make it a reference for events
+                mapped_type = self._map_type(t)
+                if not mapped_type.startswith("&"):
+                    mapped_type = f"&{mapped_type}"
+                
+                # MultiversX allows only 1 non-indexed (data) argument
+                # If we already have one non-indexed, make this one indexed
+                if not is_indexed:
+                    if non_indexed_count >= 1:
+                        is_indexed = True  # Force to indexed if we already have a non-indexed
+                    else:
+                        non_indexed_count += 1
+                
                 idx = "#[indexed] " if is_indexed else ""
-                params.append(f"{idx}{n}: {self._map_type(t)}")
-        return f"#[event(\"{event['name']}\")]\n    fn {camel_to_snake(event['name'])}_event(&self{', ' if params else ''}{', '.join(params)});"
+                params.append(f"{idx}{n}: {mapped_type}")
+        event_fn_name = f"{camel_to_snake(event['name'])}_event"
+        params_str = ", ".join(params) if params else ""
+        return f"#[event(\"{event['name']}\")]\n    fn {event_fn_name}(&self{', ' if params_str else ''}{params_str});"
 
     def convert_error(self, error: dict) -> str:
         params: list[str] = []
@@ -202,10 +218,10 @@ class Transpiler:
             if not line:
                 continue
 
-            # Handle require statements
-            if require_match := re.match(r'require\s*\(([^,]+),\s*["\']([^"\']+)["\']\)', line):
+            # Handle require statements (with or without message)
+            if require_match := re.match(r'require\s*\(([^,)]+)(?:,\s*["\']([^"\']+)["\'])?\)', line):
                 condition = require_match.group(1).strip()
-                message = require_match.group(2).strip()
+                message = require_match.group(2).strip() if require_match.group(2) else None
                 statements.append({
                     "type": "require",
                     "condition": condition,
@@ -308,30 +324,113 @@ class Transpiler:
 
         if stmt_type == "require":
             condition = self._convert_expression(stmt["condition"])
-            message = stmt["message"]
-            return f'        require!({condition}, "{message}");'
+            message = stmt.get("message")
+            # MultiversX require! macro always needs a message
+            if message:
+                return f'        require!({condition}, "{message}");'
+            else:
+                return f'        require!({condition}, "Requirement not met");'
 
         elif stmt_type == "emit":
             event_name = stmt["event_name"]
             args = stmt["args"]
             if args:
-                converted_args = self._convert_expression(args)
-                return f'        self.{camel_to_snake(event_name)}_event({converted_args});'
+                # Parse arguments and add & prefix for event calls
+                args_list = [arg.strip() for arg in args.split(',')]
+                converted_args = []
+                for arg in args_list:
+                    converted_arg = self._convert_expression(arg)
+                    # Check if this parameter might be moved - clone it first
+                    # Only clone if it's a simple parameter (not already a function call or expression)
+                    params = ['_to', '_from', '_value', 'proposalId', 'goal', 'amount', 'price', 'tokenId']
+                    needs_clone = False
+                    arg_clean = arg.strip()
+                    for param in params:
+                        if param == arg_clean or (param in converted_arg and '(' not in converted_arg and not converted_arg.startswith('self.')):
+                            needs_clone = True
+                            break
+                    
+                    # Always add & prefix for event arguments (MultiversX requirement)
+                    # But skip if already has & or is a literal/number
+                    # Also handle binary operations - they should not be wrapped in &
+                    if converted_arg.startswith('&') and not converted_arg.startswith('&('):
+                        converted_args.append(converted_arg)
+                    elif '(' in converted_arg and (' - ' in converted_arg or ' + ' in converted_arg or ' * ' in converted_arg):
+                        # Binary operation or expression - wrap in parentheses and add &
+                        # Check if it starts with & already (shouldn't, but handle it)
+                        if converted_arg.startswith('&'):
+                            converted_arg = converted_arg[1:]  # Remove existing &
+                        converted_args.append(f'&({converted_arg})')
+                    elif converted_arg.replace('.', '').replace('_', '').replace('-', '').replace('(', '').replace(')', '').isdigit():
+                        # Number literal - add & prefix
+                        converted_args.append(f'&{converted_arg}')
+                    elif '(' in converted_arg or converted_arg.startswith('self.'):
+                        # Function call or self.method() - add & prefix
+                        converted_args.append(f'&{converted_arg}')
+                    else:
+                        # Variable - add & prefix
+                        if needs_clone and not '.clone()' in converted_arg:
+                            converted_args.append(f'&{converted_arg}.clone()')
+                        else:
+                            converted_args.append(f'&{converted_arg}')
+                return f'        self.{camel_to_snake(event_name)}_event({", ".join(converted_args)});'
             else:
                 return f'        self.{camel_to_snake(event_name)}_event();'
 
         elif stmt_type == "return":
-            expression = self._convert_expression(stmt["expression"])
-            return f'        return {expression};'
+            expression = stmt["expression"].strip()
+            # Check if it's a bool literal
+            if expression.lower() == "true":
+                return '        true'
+            elif expression.lower() == "false":
+                return '        false'
+            else:
+                converted_expr = self._convert_expression(expression)
+                # Return expression value without "return" keyword (MultiversX style)
+                return f'        {converted_expr}'
 
         elif stmt_type == "assignment":
-            left = stmt["left"]
-            right = self._convert_expression(stmt["right"])
+            left = stmt["left"].strip()
+            right_expr = stmt["right"].strip()
+            
+            # Convert right expression - handle storage variable access
+            right = self._convert_expression(right_expr)
+            
+            # Check if right expression uses a parameter that might be moved
+            # If it contains operations with parameters, we need to clone
+            # First convert the expression to see what parameters are used
+            params_in_expr = []
+            params = ['_to', '_from', '_value', 'proposalId', 'goal', 'amount', 'price', 'tokenId']
+            for param in params:
+                # Check if param is used as a standalone variable (not in function calls)
+                if re.search(rf'\b{param}\b', right_expr) and f'{param}.' not in right_expr:
+                    params_in_expr.append(param)
+            
+            # If we have parameters and operations, we need to clone
+            if params_in_expr and (' - ' in right_expr or ' + ' in right_expr or ' * ' in right_expr):
+                # Clone all parameters in the expression
+                for param in params_in_expr:
+                    # Replace param with param.clone() but only as standalone, not in expressions
+                    right = re.sub(rf'\b{param}\b', f'{param}.clone()', right)
 
             # Check if this is a storage variable assignment
-            if left in ['value', 'name', 'symbol', 'decimals', 'totalSupply', 'chairperson', 'votingEnd', 'votingClosed', 'nextTokenId']:
-                snake_left = camel_to_snake(left)
-                return f'        self.{snake_left}().set({right});'
+            # Extract variable name (handle cases like "balance = balance - _value")
+            left_var = left.split()[0] if ' ' in left else left
+            storage_vars = [
+                'value', 'name', 'symbol', 'decimals', 'totalSupply', 'balance',
+                'chairperson', 'votingEnd', 'votingClosed', 'hasVoted', 'votedProposalId',
+                'proposalVoteCount', 'proposalCount', 'nextTokenId',
+                'campaignCreator', 'campaignGoal', 'campaignPledged', 'campaignClaimed', 'count',
+                'currentTokenId', 'currentOwner', 'currentPrice', 'currentForSale', 'previousOwner'
+            ]
+            
+            if left_var in storage_vars:
+                snake_left = camel_to_snake(left_var)
+                # Wrap right side in parentheses if it contains operations
+                if any(op in right for op in ['+', '-', '*', '/', '(', ')']):
+                    return f'        self.{snake_left}().set(&({right}));'
+                else:
+                    return f'        self.{snake_left}().set(&{right});'
             else:
                 return f'        {left} = {right};'
 
@@ -391,6 +490,12 @@ class Transpiler:
         # Handle block.timestamp
         expr = expr.replace("block.timestamp", "self.blockchain().get_block_timestamp()")
 
+        # Handle msg.sender first (before variable conversion)
+        expr = expr.replace("msg.sender", "self.blockchain().get_caller()")
+        
+        # Handle address(0)
+        expr = expr.replace("address(0)", "ManagedAddress::<Self::Api>::zero()")
+        
         # Handle simple arithmetic and comparisons (basic cases)
         # This would need to be much more sophisticated for complex expressions
 
@@ -403,8 +508,50 @@ class Transpiler:
         # Handle 1 minutes -> 60 seconds conversion
         expr = re.sub(r'(\d+)\s*minutes', lambda m: str(int(m.group(1)) * 60), expr)
 
-        # Handle BigUint conversion for numbers
-        expr = re.sub(r'\b(\d+)\b', r'BigUint::from(\1u32)', expr)
+        # Handle BigUint literal conversion for large numbers
+        # Replace large numbers (not in function calls) with BigUint::from
+        def replace_number(match):
+            num_str = match.group(1)
+            try:
+                num = int(num_str)
+                # u64::MAX is 18446744073709551615
+                # Very large numbers (> u64::MAX) should use power operations
+                # For numbers like 1000000000000000000000000 (10^24), use power
+                if num > 18446744073709551615:  # u64::MAX
+                    # Try to express as power of 10
+                    num_str_check = str(num)
+                    if num_str_check.startswith('1') and all(c == '0' for c in num_str_check[1:]):
+                        # Number is 1 followed by zeros (power of 10)
+                        power = len(num_str_check) - 1
+                        if power <= 256:  # Reasonable power limit
+                            return f'BigUint::from(10u32).pow({power})'
+                    # For other very large numbers, use multiplication
+                    # Calculate as multiple of smaller numbers
+                    # Or use hex bytes manually
+                    # For now, use a workaround: express as multiple operations
+                    # Actually, let's use from_bytes_be with manual byte array
+                    # Convert to hex string and parse bytes
+                    hex_str = hex(num)[2:]  # Remove '0x'
+                    if len(hex_str) % 2 == 1:
+                        hex_str = '0' + hex_str
+                    # Create byte array manually: hex string to bytes
+                    # For example: "d3c21bcecceda1000000" -> [0xd3, 0xc2, ...]
+                    byte_array = ', '.join([f'0x{hex_str[i:i+2]}' for i in range(0, len(hex_str), 2)])
+                    return f'BigUint::from_bytes_be(&[{byte_array}])'
+                elif num > 4294967295:  # u32::MAX
+                    return f'BigUint::from({num_str}u64)'
+                else:
+                    return f'BigUint::from({num_str}u32)'
+            except (ValueError, OverflowError):
+                # If number is too large to parse, use power of 10 if possible
+                num_str_check = str(num)
+                if num_str_check.startswith('1') and all(c == '0' for c in num_str_check[1:]):
+                    power = len(num_str_check) - 1
+                    return f'BigUint::from(10u32).pow({power})'
+                return f'BigUint::from(0u32)'  # Fallback
+        
+        # Replace standalone numbers (avoid numbers already in function calls)
+        expr = re.sub(r'(?<!::from\()\b(\d+)\b(?!u32|u64|u16|u8|i32|i64|i16|i8)', replace_number, expr)
 
         # Handle variable access - convert simple variable names to storage getters
         # This is a simple heuristic - in a full implementation we'd need proper symbol resolution
@@ -421,9 +568,11 @@ class Transpiler:
         # Storage variables that should be converted to getters (common patterns)
         # Note: mappings like balanceOf should NOT be converted to .get() since they're accessed with []
         storage_vars = [
-            'value', 'totalSupply', 'name', 'symbol', 'decimals',
-            'chairperson', 'votingEnd', 'votingClosed',
-            'nextTokenId', 'campaigns', 'crowdfundingEnd'
+            'value', 'totalSupply', 'name', 'symbol', 'decimals', 'balance',
+            'chairperson', 'votingEnd', 'votingClosed', 'hasVoted', 'votedProposalId',
+            'proposalVoteCount', 'proposalCount', 'nextTokenId', 'campaigns', 'crowdfundingEnd',
+            'campaignCreator', 'campaignGoal', 'campaignPledged', 'campaignClaimed', 'count',
+            'currentTokenId', 'currentOwner', 'currentPrice', 'currentForSale', 'previousOwner'
         ]
 
         # Mapping variables that should be converted to mappers (not getters)
@@ -547,8 +696,14 @@ class Transpiler:
 
         lines: list[str] = []
         lines.append("#![no_std]\n")
-        lines.append("use multiversx_sc::imports::*;")
-        lines.append("use multiversx_sc::derive_imports::*;\n")
+        lines.append("use multiversx_sc::imports::*;\n")
+        # Add hex import if needed (for large number conversion)
+        if any("hex::decode" in line for line in self._parse_statements("\n".join([f.get("body", "") for f in functions])) if isinstance(line, dict) and line.get("type") == "assignment"):
+            # Check if any function body uses hex::decode
+            for func in functions:
+                if "hex::decode" in self.convert_function(func, name):
+                    lines.append("use multiversx_sc::hex;\n")
+                    break
 
         for s in structs:
             lines.append(self.convert_struct(s))

@@ -14,7 +14,6 @@ pub fn transform_with_attributes(parsed: ParsedContract) -> Result<String> {
     // Add header
     output.push_str("#![no_std]\n\n");
     output.push_str("use multiversx_sc::imports::*;\n\n");
-    output.push_str("use multiversx_sc::derive_imports::*;\n\n");
 
 
     for part in parsed.solidity_ast.0 {
@@ -32,13 +31,14 @@ pub fn transform_with_attributes(parsed: ParsedContract) -> Result<String> {
             ));
             let rust_body = transform_contract_with_attributes(&contract)?;
 
+            // First, add storage mappers to the trait
             for node in &rust_body {
                 if let RustNode::StorageDefinition {
                     name, type_name, ..
                 } = node
                 {
                     output.push_str(&format!(
-                        "    #[storage_mapper(\"{}\")]\n    pub fn {}(&self) -> SingleValueMapper<{}>;\n",
+                        "    #[storage_mapper(\"{}\")]\n    fn {}(&self) -> SingleValueMapper<{}>;\n",
                         name,
                         name.to_snake_case(),
                         type_name
@@ -46,11 +46,56 @@ pub fn transform_with_attributes(parsed: ParsedContract) -> Result<String> {
                 }
             }
 
-            output.push_str("}\n\n");
+            // Check if there's an init function
+            let has_init = rust_body.iter().any(|node| {
+                if let RustNode::Function { name, .. } = node {
+                    name.is_empty()
+                } else {
+                    false
+                }
+            });
 
-            // Generate implementation
-            output.push_str(&format!("impl {} {{\n", contract_name));
+            // Add empty init if there's no constructor
+            if !has_init {
+                output.push_str("\n    #[init]\n");
+                output.push_str("    fn init(&self) {}\n");
+            }
 
+            // Add events to the trait
+            for node in &rust_body {
+                if let RustNode::EventDefinition { name, params } = node {
+                    let params_str = params
+                        .iter()
+                        .map(|param| {
+                            // Make parameter types references for events
+                            let ref_type = if param.type_name.starts_with("&") {
+                                param.type_name.clone()
+                            } else {
+                                format!("&{}", param.type_name)
+                            };
+                            // Add #[indexed] if the parameter is indexed
+                            let indexed_attr = if param.indexed {
+                                "#[indexed] "
+                            } else {
+                                ""
+                            };
+                            format!("{}{}: {}", indexed_attr, param.name.to_snake_case(), ref_type)
+                        })
+                        .collect::<Vec<_>>()
+                        .join(", ");
+
+                    // Add _event suffix to avoid conflict with function names
+                    let event_fn_name = format!("{}_event", name.to_snake_case());
+                    output.push_str(&format!(
+                        "\n    #[event(\"{}\")]\n    fn {}(&self{});\n",
+                        name,
+                        event_fn_name,
+                        if params_str.is_empty() { "".to_string() } else { format!(", {}", params_str) }
+                    ));
+                }
+            }
+
+            // Add all functions (endpoints and views) to the trait
             for node in rust_body {
                 match node {
                     // Handle function definitions
@@ -80,11 +125,8 @@ pub fn transform_with_attributes(parsed: ParsedContract) -> Result<String> {
                         // Add function signature
                         let function_name =
                             if name.is_empty() { "init" } else { &name.to_snake_case() };
-                        let function_visibility = if visibility == RustVisibility::Private {
-                            ""
-                        } else {
-                            "pub "
-                        };
+                        // In trait, functions don't need pub - they're public by default in traits
+                        let function_visibility = "";
 
                         let params_str = params
                             .iter()
@@ -126,24 +168,9 @@ pub fn transform_with_attributes(parsed: ParsedContract) -> Result<String> {
                         output.push_str("    }\n");
                     }
 
-                    // Handle event definitions
-                    RustNode::EventDefinition { name, params } => {
-                        let params_str = params
-                            .iter()
-                            .map(|param| {
-                                format!(", {}: {}", param.name.to_snake_case(), param.type_name)
-                            })
-                            .collect::<Vec<_>>()
-                            .join(", ");
-
-                        output.push_str(&format!(
-                            "\n    #[event(\"{}\")]\n    fn {}_event(&self{});\n",
-                            name,
-                            name.to_snake_case(),
-                            params_str
-                        ));
-                    }
-
+                    // Events are already handled above, skip here
+                    RustNode::EventDefinition { .. } => {}
+                    RustNode::StorageDefinition { .. } => {}
                     _ => {}
                 }
             }
@@ -171,7 +198,7 @@ fn transform_rust_node_to_code(node: &RustNode) -> Result<String> {
                             transform_rust_node_to_code(&RustNode::Expression(arg.clone()))?;
 
                         return Ok(format!(
-                            "let current_value = self.{}().get();\n        self.{}().set(current_value {} 1);",
+                            "let current_value = self.{}().get();\n        self.{}().set(&(current_value {} 1u32.into()));",
                             argument_code, argument_code, operation
                         ));
                     }
@@ -184,7 +211,7 @@ fn transform_rust_node_to_code(node: &RustNode) -> Result<String> {
                             transform_rust_node_to_code(&RustNode::Expression(arg.clone()))?;
 
                         return Ok(format!(
-                            "let current_value = self.{}().get() {} 1;\n        self.{}().set(current_value);",
+                            "let current_value = self.{}().get() {} 1u32.into();\n        self.{}().set(&current_value);",
                             argument_code, operation, argument_code
                         ));
                     }
@@ -198,7 +225,7 @@ fn transform_rust_node_to_code(node: &RustNode) -> Result<String> {
                             transform_rust_node_to_code(&RustNode::Expression(arg.clone()))?;
 
                         return Ok(format!(
-                            "self.{}().set({});",
+                            "self.{}().set(&{});",
                             storage_variable, argument_code
                         ));
                     }
@@ -207,11 +234,31 @@ fn transform_rust_node_to_code(node: &RustNode) -> Result<String> {
 
             // Fallback to default function call handling for other cases
             let func_code = transform_rust_node_to_code(&RustNode::Expression(*function.clone()))?;
-            let args_code = arguments
-                .iter()
-                .map(|arg| transform_rust_node_to_code(&RustNode::Expression(arg.clone())))
-                .collect::<Result<Vec<_>>>()?
-                .join(", ");
+            
+            // Check if this is an event call (starts with "self." and doesn't contain "()")
+            // Events are called as self.event_name(...) while storage mappers are self.variable()
+            // For event calls, arguments should be passed as references
+            let func_code_str = func_code.clone();
+            let is_event_call = func_code_str.starts_with("self.") && !func_code_str.contains("()");
+            
+            let args_code = if is_event_call {
+                // For events, pass arguments as references
+                arguments
+                    .iter()
+                    .map(|arg| {
+                        let arg_code = transform_rust_node_to_code(&RustNode::Expression(arg.clone()))?;
+                        // Always pass as reference for event calls
+                        Ok(format!("&{}", arg_code))
+                    })
+                    .collect::<Result<Vec<_>>>()?
+                    .join(", ")
+            } else {
+                arguments
+                    .iter()
+                    .map(|arg| transform_rust_node_to_code(&RustNode::Expression(arg.clone())))
+                    .collect::<Result<Vec<_>>>()?
+                    .join(", ")
+            };
             Ok(format!("{}({})", func_code, args_code))
         }
 
@@ -223,7 +270,8 @@ fn transform_rust_node_to_code(node: &RustNode) -> Result<String> {
         }) => {
             let left_code = transform_rust_node_to_code(&RustNode::Expression(*left.clone()))?;
             let right_code = transform_rust_node_to_code(&RustNode::Expression(*right.clone()))?;
-            Ok(format!("{} {} {}", left_code, operator, right_code))
+            // Wrap binary operations in parentheses for safety
+            Ok(format!("({} {} {})", left_code, operator, right_code))
         }
 
         // Handle variable identifiers
@@ -231,6 +279,9 @@ fn transform_rust_node_to_code(node: &RustNode) -> Result<String> {
 
         // Handle number literals
         RustNode::Expression(RustExpression::NumberLiteral(value)) => Ok(value.clone()),
+        
+        // Handle bool literals
+        RustNode::Expression(RustExpression::BoolLiteral(value)) => Ok(value.to_string()),
 
         // Handle block nodes
         RustNode::Function { name, body, .. } if name == "block" => {
@@ -245,18 +296,24 @@ fn transform_rust_node_to_code(node: &RustNode) -> Result<String> {
         // Handle assignments
         RustNode::Assignment { target, value } => {
             let target_code = transform_rust_node_to_code(&RustNode::Expression(*target.clone()))?;
-            let value_code = transform_rust_node_to_code(&RustNode::Expression(*value.clone()))?;
-            Ok(format!("self.{}().set({});", target_code, value_code))
+            // Transform value - if it contains storage variable access, convert to get()
+            let value_code = transform_value_with_storage_access(&RustNode::Expression(*value.clone()))?;
+            Ok(format!("self.{}().set(&{});", target_code, value_code))
         }
 
         // Handle return statements
         RustNode::Return(Some(expression)) => {
             if let RustExpression::Identifier(name) = expression.clone() {
+                // Check if it's a storage variable - if so, return get() call
                 Ok(format!("self.{}().get()", name.to_snake_case()))
+            } else if let RustExpression::BoolLiteral(value) = expression.clone() {
+                // Return bool literal without "return" keyword
+                Ok(value.to_string())
             } else {
                 let return_value =
                     transform_rust_node_to_code(&RustNode::Expression(expression.clone()))?;
-                Ok(format!("return {}; // Convert expression", return_value))
+                // Return expression value without "return" keyword (MultiversX style)
+                Ok(return_value)
             }
         }
 
@@ -301,8 +358,35 @@ fn transform_rust_node_to_code(node: &RustNode) -> Result<String> {
             ))
         }
 
+        // Handle require statements
+        RustNode::Require { condition, message } => {
+            let condition_code = transform_rust_node_to_code(&RustNode::Expression(condition.clone()))?;
+            if let Some(msg) = message {
+                let msg_code = transform_rust_node_to_code(&RustNode::Expression(msg.clone()))?;
+                Ok(format!("require!({}, {});", condition_code, msg_code))
+            } else {
+                Ok(format!("require!({});", condition_code))
+            }
+        }
+
         // Unsupported cases
         _ => Err(anyhow!("Unsupported RustNode type: {:?}", node)),
+    }
+}
+
+// Helper function to transform value expressions, handling storage variable access
+fn transform_value_with_storage_access(node: &RustNode) -> Result<String> {
+    match node {
+        RustNode::Expression(RustExpression::Identifier(name)) => {
+            // Check if this is a storage variable - if so, use get()
+            Ok(format!("self.{}().get()", name.to_snake_case()))
+        }
+        RustNode::Expression(RustExpression::BinaryOperation { left, operator, right }) => {
+            let left_code = transform_value_with_storage_access(&RustNode::Expression(*left.clone()))?;
+            let right_code = transform_value_with_storage_access(&RustNode::Expression(*right.clone()))?;
+            Ok(format!("({} {} {})", left_code, operator, right_code))
+        }
+        _ => transform_rust_node_to_code(node),
     }
 }
 
@@ -360,6 +444,7 @@ fn transform_contract_with_attributes(contract: &pt::ContractDefinition) -> Resu
                         Ok(RustParameter {
                             name: field_name,
                             type_name: field_type,
+                            indexed: false,
                         })
                     })
                     .collect::<Result<Vec<_>>>()?;
@@ -383,39 +468,25 @@ fn transform_contract_with_attributes(contract: &pt::ContractDefinition) -> Resu
                             .unwrap_or_default();
                         
                         let param_type = map_type(&convert_expression_to_type(&param.ty)?)?;
+                        
+                        // For events, parameters should be references
+                        let ref_type = format!("&{}", param_type);
             
                         // Check if the parameter is indexed
                         let indexed = param.indexed;
             
-                        Ok((param_name, param_type, indexed))
+                        Ok((param_name, ref_type, indexed))
                     })
                     .collect::<Result<Vec<(String, String, bool)>>>()?;
-            
-                // Create the Rust event function
-                let rust_event = format!(
-                    "    #[event(\"{}\")]\n    fn {}(&self{}) {{\n    }}",
-                    name,
-                    snake_to_camel_case(&name),
-                    params
-                        .iter()
-                        .map(|(param_name, param_type, indexed)| {
-                            if *indexed {
-                                format!(", #[indexed] {}: {}", param_name.to_snake_case(), param_type)
-                            } else {
-                                format!(", {}: {}", param_name.to_snake_case(), param_type)
-                            }
-                        })
-                        .collect::<Vec<_>>()
-                        .join("")
-                );
             
                 rust_nodes.push(RustNode::EventDefinition {
                     name,
                     params: params
                         .into_iter()
-                        .map(|(param_name, param_type, _)| RustParameter {
+                        .map(|(param_name, param_type, indexed)| RustParameter {
                             name: param_name,
                             type_name: param_type,
+                            indexed,
                         })
                         .collect(),
                 });
@@ -444,6 +515,7 @@ fn transform_function_with_attributes(func: &pt::FunctionDefinition) -> Result<R
                     .map(|id| id.name.clone())
                     .unwrap_or_default(),
                 type_name: map_type(&type_name)?,
+                indexed: false,
             })
         })
         .collect::<Result<Vec<_>>>()?;
@@ -464,6 +536,7 @@ fn transform_function_with_attributes(func: &pt::FunctionDefinition) -> Result<R
                             .map(|id| id.name.clone())
                             .unwrap_or_default(),
                         type_name: map_type(&type_name)?,
+                        indexed: false,
                     })
                 })
                 .collect::<Result<Vec<_>>>()?,

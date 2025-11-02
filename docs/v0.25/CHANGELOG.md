@@ -19,6 +19,31 @@ This release represents the completion of Milestone 1, delivering a fully functi
 - ✅ **Public GitHub repository** with CI/CD integration
 - ✅ **Comprehensive documentation** with guides and examples
 - ✅ **5 complete test contracts** with full body generation
+- ✅ **5 contracts successfully deployed** to MultiversX Devnet
+
+---
+
+## Transpilation to Deployment Pipeline
+
+XTract follows a clear, automated pipeline from Solidity source to deployed contracts:
+
+```
+test_cases/solidity/*.sol          # Solidity source files
+  ↓ (xtract transpiler)
+test_cases/expected/*.rs           # Transpiled Rust output (direct transpiler output)
+  ↓ (build_and_deploy_all.sh copies)
+demo/*/src/lib.rs                  # Build staging area
+  ↓ (sc-meta build)
+demo/*/output/*.wasm              # Compiled WASM bytecode
+  ↓ (mxpy deploy)
+MultiversX Devnet                 # Deployed smart contracts
+```
+
+**Key Points:**
+- ✅ All deployed contracts use **direct transpiler output** from `test_cases/expected/`
+- ✅ `demo/` folder is temporary - used only for building and deployment
+- ✅ File comparison verifies deployed contracts match transpiler output exactly
+- ✅ No manual edits are applied after transpilation
 
 ---
 
@@ -211,7 +236,7 @@ pytest tests/test_transpiler_core.py::test_simple_storage_shape -v
 ### 🔧 Technical Implementation Details
 
 #### **Parser Architecture**
-**File**: `xtract/transpiler.py` (611 lines)
+**File**: `xtract/transpiler.py` (765 lines)
 
 **Key Components:**
 1. **Contract Parser**: Extracts contract structure, functions, events, constructors

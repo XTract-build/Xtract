@@ -1,28 +1,25 @@
 #![no_std]
 
 use multiversx_sc::imports::*;
-use multiversx_sc::derive_imports::*;
 
 #[multiversx_sc::contract]
 pub trait SimpleStorage {
     #[storage_mapper("value")]
     fn value(&self) -> SingleValueMapper<BigUint<Self::Api>>;
 
-    #[event("ValueChanged")]
-    fn value_changed_event(&self, #[indexed] newValue: BigUint<Self::Api>);
-
     #[init]
     fn init(&self) {}
 
-    #[endpoint]
+    #[event("ValueChanged")]
+    fn value_changed(&self, #[indexed] new_value: &BigUint<Self::Api>);
+    #[endpoint(setValue)]
     fn set_value(&self, newValue: BigUint<Self::Api>) {
-        self.value().set(newValue);
-        self.value_changed_event(newValue);
+        self.value().set(&newValue);
+        self.value_changed(&newValue)
     }
-
     #[view(getValue)]
     fn get_value(&self) -> BigUint<Self::Api> {
-        return self.value().get();
+        self.value().get()
     }
-
 }
+

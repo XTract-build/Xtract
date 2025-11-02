@@ -20,7 +20,7 @@ This version introduces **statement-level code generation** with the following c
 
 **Test Coverage**: 100% unit test success across 5+ Solidity contracts with comprehensive body validation.
 
-For full implementation details, see [transpiler_report.md](transpiler_report.md).
+For full implementation details, see the [v0.25 documentation](docs/v0.25/README.md).
 
 ## What it can do today
 
@@ -39,11 +39,11 @@ For full implementation details, see [transpiler_report.md](transpiler_report.md
 ## Early Adopter Guide
 
 ### Supported Patterns
-✅ **Basic contracts**: SimpleStorage, ERC20 transfers, Voting systems
+✅ **Basic contracts**: SimpleStorage, ERC20 basic transfers, Voting systems
 ✅ **Events**: `emit EventName(args)` → `self.event_name_event(args)`
 ✅ **Error handling**: `require(condition, "msg")` → `require!(condition, "msg")`
-✅ **Storage**: `variable = value` → `self.variable().set(value)`
-✅ **Returns**: `return expression` → `return expression`
+✅ **Storage**: `variable = value` → `self.variable().set(&value)`
+✅ **Returns**: `return expression` → `expression` (MultiversX style)
 
 ### Known Limitations & Rewrites
 ⚠️ **SpaceVM Push Model**: MultiversX uses explicit value transfer (users send tokens with calls) vs Ethereum's approval/pull model
@@ -68,7 +68,7 @@ For full implementation details, see [transpiler_report.md](transpiler_report.md
 ### Installation
 
 ```bash
-git clone https://github.com/kaankacar/XTract.git
+git clone https://github.com/XTract-build/Xtract.git
 cd XTract
 
 # Install Python CLI
@@ -94,6 +94,29 @@ XTract/
   .github/workflows/ # CI configuration
   pyproject.toml     # Python packaging config
 ```
+
+### How XTract Works - Transpilation to Deployment Pipeline
+
+XTract follows a clear pipeline from Solidity source code to deployed MultiversX contracts:
+
+```
+test_cases/solidity/*.sol          # 1. Solidity source files
+  ↓ (xtract transpiler)
+test_cases/expected/*.rs           # 2. Transpiled Rust output (direct transpiler output)
+  ↓ (build_and_deploy_all.sh copies)
+demo/*/src/lib.rs                  # 3. Build staging area (copied for compilation)
+  ↓ (sc-meta build)
+demo/*/output/*.wasm              # 4. Compiled WASM bytecode
+  ↓ (mxpy deploy)
+MultiversX Devnet                 # 5. Deployed smart contracts
+```
+
+**Key Points:**
+- ✅ **Source**: All Solidity contracts start in `test_cases/solidity/`
+- ✅ **Transpiled Output**: Python transpiler (`xtract/transpiler.py`) generates Rust code to `test_cases/expected/`
+- ✅ **Deployment**: Scripts copy from `test_cases/expected/` to `demo/` for building and deployment
+- ✅ **Direct Output**: Deployed contracts are **direct transpiler output** - no manual edits after transpilation
+- ✅ **Verified**: All deployed contracts match their transpiler output (file comparison verified)
 
 ### Usage
 
@@ -197,10 +220,10 @@ cargo run <solidity_file.sol>
 
 The `test_cases/` directory contains 5 fully working examples:
 - **SimpleStorage.sol** - Basic storage with events and functions
-- **ERC20Token.sol** - Token implementation with transfers and approvals
-- **Voting.sol** - Voting system with proposals and time-based logic
-- **NFTMarketplace.sol** - NFT marketplace with offers and sales
-- **Crowdfunding.sol** - Campaign management with pledges and refunds
+- **ERC20Token.sol** - Basic token implementation with transfers
+- **Voting.sol** - Voting system with proposals and vote tracking
+- **NFTMarketplace.sol** - NFT marketplace with listing and sales
+- **Crowdfunding.sol** - Campaign management with pledges and claims
 
 Each example demonstrates different transpilation features and patterns.
 

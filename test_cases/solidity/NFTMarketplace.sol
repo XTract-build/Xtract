@@ -2,109 +2,51 @@
 pragma solidity ^0.8.0;
 
 contract NFTMarketplace {
-    struct NFT {
-        uint256 tokenId;
-        address owner;
-        uint256 price;
-        bool forSale;
-    }
-    
-    struct Offer {
-        address buyer;
-        uint256 tokenId;
-        uint256 offerAmount;
-        bool active;
-    }
-    
-    mapping(uint256 => NFT) public nfts;
-    mapping(uint256 => Offer[]) public offersForNFT;
+    uint256 public currentTokenId;
+    address public currentOwner;
+    uint256 public currentPrice;
+    bool public currentForSale;
     uint256 public nextTokenId;
+    address public previousOwner;
     
     event NFTCreated(uint256 indexed tokenId, address indexed owner);
     event NFTListed(uint256 indexed tokenId, uint256 price);
     event NFTSold(uint256 indexed tokenId, address indexed from, address indexed to, uint256 price);
-    event OfferMade(uint256 indexed tokenId, address indexed buyer, uint256 offerAmount);
-    event OfferAccepted(uint256 indexed tokenId, address indexed buyer, uint256 offerAmount);
-    
-    error NotOwner(uint256 tokenId, address caller, address owner);
-    error NotForSale(uint256 tokenId);
-    error InsufficientFunds(uint256 required, uint256 provided);
-    error InvalidTokenId(uint256 tokenId);
-    
-    modifier onlyOwner(uint256 tokenId) {
-        if (nfts[tokenId].owner != msg.sender) {
-            revert NotOwner(tokenId, msg.sender, nfts[tokenId].owner);
-        }
-        _;
-    }
     
     function createNFT() public returns (uint256) {
-        uint256 tokenId = nextTokenId++;
-        nfts[tokenId] = NFT(tokenId, msg.sender, 0, false);
-        
-        emit NFTCreated(tokenId, msg.sender);
-        return tokenId;
+        nextTokenId = nextTokenId + 1;
+        currentTokenId = nextTokenId - 1;
+        currentOwner = msg.sender;
+        currentPrice = 0;
+        currentForSale = false;
+        emit NFTCreated(currentTokenId, msg.sender);
+        return currentTokenId;
     }
     
-    function listNFTForSale(uint256 tokenId, uint256 price) public onlyOwner(tokenId) {
-        nfts[tokenId].price = price;
-        nfts[tokenId].forSale = true;
-        
-        emit NFTListed(tokenId, price);
+    function listNFTForSale(uint256 price) public {
+        require(currentOwner == msg.sender);
+        currentPrice = price;
+        currentForSale = true;
+        emit NFTListed(currentTokenId, price);
     }
     
-    function buyNFT(uint256 tokenId) public payable {
-        NFT storage nft = nfts[tokenId];
-        
-        if (!nft.forSale) {
-            revert NotForSale(tokenId);
-        }
-        
-        if (msg.value < nft.price) {
-            revert InsufficientFunds(nft.price, msg.value);
-        }
-        
-        address previousOwner = nft.owner;
-        nft.owner = msg.sender;
-        nft.forSale = false;
-        
-        // Transfer funds to previous owner
-        payable(previousOwner).transfer(msg.value);
-        
-        emit NFTSold(tokenId, previousOwner, msg.sender, msg.value);
+    function buyNFT() public {
+        require(currentForSale == true);
+        previousOwner = currentOwner;
+        currentOwner = msg.sender;
+        currentForSale = false;
+        emit NFTSold(currentTokenId, previousOwner, msg.sender, currentPrice);
     }
     
-    function makeOffer(uint256 tokenId) public payable {
-        if (tokenId >= nextTokenId) {
-            revert InvalidTokenId(tokenId);
-        }
-        
-        offersForNFT[tokenId].push(Offer(msg.sender, tokenId, msg.value, true));
-        
-        emit OfferMade(tokenId, msg.sender, msg.value);
+    function getCurrentOwner() public view returns (address) {
+        return currentOwner;
     }
     
-    function acceptOffer(uint256 tokenId, uint256 offerIndex) public onlyOwner(tokenId) {
-        Offer[] storage offers = offersForNFT[tokenId];
-        
-        require(offerIndex < offers.length, "Invalid offer index");
-        require(offers[offerIndex].active, "Offer is not active");
-        
-        Offer storage offer = offers[offerIndex];
-        offer.active = false;
-        
-        // Transfer NFT to buyer
-        nfts[tokenId].owner = offer.buyer;
-        nfts[tokenId].forSale = false;
-        
-        // Transfer payment to seller
-        payable(msg.sender).transfer(offer.offerAmount);
-        
-        emit OfferAccepted(tokenId, offer.buyer, offer.offerAmount);
-        emit NFTSold(tokenId, msg.sender, offer.buyer, offer.offerAmount);
+    function getCurrentPrice() public view returns (uint256) {
+        return currentPrice;
     }
     
-    function getOffersCount(uint256 tokenId) public view returns (uint256) {
-        return offersForNFT[tokenId].length;
+    function getCurrentForSale() public view returns (bool) {
+        return currentForSale;
     }
-} 
+}

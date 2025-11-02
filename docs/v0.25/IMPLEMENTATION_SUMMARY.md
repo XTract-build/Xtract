@@ -14,11 +14,41 @@ XTract v0.25 is a **fully functional production-ready transpiler** that converts
 
 ---
 
+## Transpilation to Deployment Pipeline
+
+XTract follows a streamlined pipeline from Solidity source to deployed MultiversX contracts:
+
+```
+test_cases/solidity/*.sol          # 1. Solidity source files
+  ↓ (xtract transpiler)
+test_cases/expected/*.rs           # 2. Transpiled Rust output (direct transpiler output)
+  ↓ (build_and_deploy_all.sh copies)
+demo/*/src/lib.rs                  # 3. Build staging area (copied for compilation)
+  ↓ (sc-meta build)
+demo/*/output/*.wasm              # 4. Compiled WASM bytecode
+  ↓ (mxpy deploy)
+MultiversX Devnet                 # 5. Deployed smart contracts
+```
+
+**Process Flow:**
+1. **Source**: Solidity contracts in `test_cases/solidity/`
+2. **Transpilation**: Python transpiler (`xtract/transpiler.py`) generates Rust code to `test_cases/expected/`
+3. **Build Prep**: Scripts copy transpiled output to `demo/` for compilation
+4. **Compilation**: `sc-meta` builds WASM bytecode
+5. **Deployment**: `mxpy` deploys to MultiversX Devnet
+
+**Verification:**
+- ✅ All deployed contracts are **direct transpiler output** (file comparison verified)
+- ✅ No manual edits applied after transpilation
+- ✅ `test_cases/expected/` is the source of truth for transpiler output
+
+---
+
 ## Core Implementation
 
 ### 1. Parser Architecture
 
-**File:** `xtract/transpiler.py` (611 lines)  
+**File:** `xtract/transpiler.py` (765 lines)  
 **Technology:** Python 3.11+ with regex-based parsing  
 **Approach:** Multi-stage parsing and code generation
 
@@ -534,7 +564,7 @@ cargo check --manifest-path demo/simple_storage/Cargo.toml
 | Development environment | ✅ Complete | Python packaging, pip, pytest |
 | Version control | ✅ Complete | GitHub with proper workflow |
 | CI/CD pipeline | ✅ Complete | GitHub Actions, 2 jobs |
-| Core transpilation | ✅ Complete | 611 lines, fully functional |
+| Core transpilation | ✅ Complete | 765 lines, fully functional |
 | Functions | ✅ Complete | Signatures + bodies |
 | Events | ✅ Complete | Declaration + emission |
 | Variables | ✅ Complete | Storage mappers |
@@ -556,7 +586,7 @@ cargo check --manifest-path demo/simple_storage/Cargo.toml
 ### Evidence of Real Implementation
 
 1. **Real Parser:**
-   - 611 lines of actual parsing logic
+   - 765 lines of actual parsing logic
    - Regex patterns tested on real Solidity
    - No hardcoded templates
 

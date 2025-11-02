@@ -32,12 +32,15 @@ fn main() -> Result<()> {
     let mut file = fs::File::create(&output_file)?;
     writeln!(file, "{}", rust_ast)?;
 
-    let wasm_output = compile_to_wasm(&output_file)?;
-    println!("{wasm_output}");
-    let gas_limit = 20_000_000; 
-    let pem_path = "./wallet.pem";
-    let proxy_url = "https://devnet-gateway.multiversx.com";
-    deploy_to_multiversx(&wasm_output, pem_path, proxy_url, gas_limit)?;
+    println!("Transpiled contract written to: {}", output_file);
+    
+    // Uncomment below to auto-deploy:
+    // let wasm_output = compile_to_wasm(&output_file)?;
+    // println!("{wasm_output}");
+    // let gas_limit = 20_000_000; 
+    // let pem_path = "./wallet.pem";
+    // let proxy_url = "https://devnet-gateway.multiversx.com";
+    // deploy_to_multiversx(&wasm_output, pem_path, proxy_url, gas_limit)?;
     Ok(())
 }
 
