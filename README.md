@@ -1,7 +1,7 @@
 # XTract (v0.25)
 
-[![CI](https://github.com/kaankacar/XTract/actions/workflows/ci.yml/badge.svg)](https://github.com/kaankacar/XTract/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-100%25-success)](https://github.com/kaankacar/XTract/actions/workflows/ci.yml)
+[![CI](https://github.com/XTract-build/Xtract/actions/workflows/ci.yml/badge.svg)](https://github.com/XTract-build/Xtract/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-100%25-success)](https://github.com/XTract-build/Xtract/actions/workflows/ci.yml)
 
 An open-source tool for converting Solidity smart contracts to MultiversX-compatible Rust smart contracts.
 

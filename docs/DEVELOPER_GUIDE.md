@@ -39,7 +39,7 @@ The transpiler supports the following Solidity features:
 
 1. **Install the tool**:
    ```bash
-   git clone https://github.com/kaankacar/XTract.git
+   git clone https://github.com/XTract-build/Xtract.git
    cd XTract
    pip install -e .[dev]
    ```
