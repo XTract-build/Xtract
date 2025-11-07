@@ -39,7 +39,7 @@ pub trait Crowdfunding {
         self.campaign_pledged().set(&(BigUint::from(0u32)));
         self.campaign_claimed().set(&false);
         self.campaign_created_event(&(self.count().get() - BigUint::from(1u32)), &self.blockchain().get_caller(), &goal.clone());
-        self.count().get() - BigUint::from(1u32)
+        return self.count().get() - BigUint::from(1u32);
     }
 
     #[endpoint]
@@ -60,22 +60,22 @@ pub trait Crowdfunding {
 
     #[view(getCampaignCreator)]
     fn get_campaign_creator(&self) -> ManagedAddress<Self::Api> {
-        self.campaign_creator().get()
+        return self.campaign_creator().get();
     }
 
     #[view(getCampaignGoal)]
     fn get_campaign_goal(&self) -> BigUint<Self::Api> {
-        self.campaign_goal().get()
+        return self.campaign_goal().get();
     }
 
     #[view(getCampaignPledged)]
     fn get_campaign_pledged(&self) -> BigUint<Self::Api> {
-        self.campaign_pledged().get()
+        return self.campaign_pledged().get();
     }
 
     #[view(getCampaignClaimed)]
     fn get_campaign_claimed(&self) -> bool {
-        self.campaign_claimed().get()
+        return self.campaign_claimed().get();
     }
 
 }

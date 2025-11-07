@@ -42,7 +42,7 @@ pub trait NFTMarketplace {
         self.current_price().set(&(BigUint::from(0u32)));
         self.current_for_sale().set(&false);
         self.nft_created_event(&self.current_token_id().get(), &self.blockchain().get_caller());
-        self.current_token_id().get()
+        return self.current_token_id().get();
     }
 
     #[endpoint]
@@ -64,17 +64,17 @@ pub trait NFTMarketplace {
 
     #[view(getCurrentOwner)]
     fn get_current_owner(&self) -> ManagedAddress<Self::Api> {
-        self.current_owner().get()
+        return self.current_owner().get();
     }
 
     #[view(getCurrentPrice)]
     fn get_current_price(&self) -> BigUint<Self::Api> {
-        self.current_price().get()
+        return self.current_price().get();
     }
 
     #[view(getCurrentForSale)]
     fn get_current_for_sale(&self) -> bool {
-        self.current_for_sale().get()
+        return self.current_for_sale().get();
     }
 
 }

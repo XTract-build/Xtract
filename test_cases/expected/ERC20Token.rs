@@ -24,7 +24,7 @@ pub trait ERC20Token {
         require!(self.balance().get() >= _value, "Requirement not met");
         self.balance().set(&(self.balance().get() - _value.clone()));
         self.transfer_event(&self.blockchain().get_caller(), &_to.clone(), &_value.clone());
-        true
+        return true;
     }
 
 }

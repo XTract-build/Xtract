@@ -49,12 +49,12 @@ pub trait Voting {
 
     #[view(getProposalVoteCount)]
     fn get_proposal_vote_count(&self) -> BigUint<Self::Api> {
-        self.proposal_vote_count().get()
+        return self.proposal_vote_count().get();
     }
 
     #[view(getProposalCount)]
     fn get_proposal_count(&self) -> BigUint<Self::Api> {
-        self.proposal_count().get()
+        return self.proposal_count().get();
     }
 
 }

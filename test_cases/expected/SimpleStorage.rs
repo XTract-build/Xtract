@@ -7,19 +7,22 @@ pub trait SimpleStorage {
     #[storage_mapper("value")]
     fn value(&self) -> SingleValueMapper<BigUint<Self::Api>>;
 
+    #[event("ValueChanged")]
+    fn value_changed_event(&self, #[indexed] newValue: &BigUint<Self::Api>);
+
     #[init]
     fn init(&self) {}
 
-    #[event("ValueChanged")]
-    fn value_changed(&self, #[indexed] new_value: &BigUint<Self::Api>);
-    #[endpoint(setValue)]
+    #[endpoint]
     fn set_value(&self, newValue: BigUint<Self::Api>) {
         self.value().set(&newValue);
-        self.value_changed(&newValue)
+        self.value_changed_event(&newValue);
     }
+
     #[view(getValue)]
     fn get_value(&self) -> BigUint<Self::Api> {
-        self.value().get()
+        return self.value().get();
     }
+
 }
 

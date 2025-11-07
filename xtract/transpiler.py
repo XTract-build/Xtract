@@ -381,13 +381,13 @@ class Transpiler:
             expression = stmt["expression"].strip()
             # Check if it's a bool literal
             if expression.lower() == "true":
-                return '        true'
+                return '        return true;'
             elif expression.lower() == "false":
-                return '        false'
+                return '        return false;'
             else:
                 converted_expr = self._convert_expression(expression)
-                # Return expression value without "return" keyword (MultiversX style)
-                return f'        {converted_expr}'
+                # Preserve explicit return from Solidity for clarity
+                return f'        return {converted_expr};'
 
         elif stmt_type == "assignment":
             left = stmt["left"].strip()
