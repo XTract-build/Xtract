@@ -549,6 +549,32 @@ class Transpiler:
                 })
                 continue
 
+            # Detect struct field assignments before the general assignment handler.
+            # Pattern A: mapping[key].field op= value
+            if mapping_field_match := re.match(r'(\w+)\[([^\]]+)\]\.(\w+)\s*([+\-*/]?=)\s*(.+)', line):
+                statements.append({
+                    "type": "struct_field_update",
+                    "struct_var": mapping_field_match.group(1),
+                    "key": mapping_field_match.group(2).strip(),
+                    "field": mapping_field_match.group(3),
+                    "op": mapping_field_match.group(4),
+                    "value": mapping_field_match.group(5).strip(),
+                })
+                continue
+
+            # Pattern B: var.field op= value (local var or direct storage struct)
+            if struct_field_match := re.match(r'(\w+)\.(\w+)\s*([+\-*/]?=)\s*(.+)', line):
+                statements.append({
+                    "type": "struct_field_update",
+                    "struct_var": struct_field_match.group(1),
+                    "key": None,
+                    "field": struct_field_match.group(2),
+                    "op": struct_field_match.group(3),
+                    "value": struct_field_match.group(4).strip(),
+                })
+                continue
+
+
             # Handle variable declarations: type name = expr
             if decl_match := re.match(r'([a-zA-Z_]\w*(?:\[\d*\])?)\s+([a-zA-Z_]\w*)\s*=\s*(.+)', line):
                 statements.append({
@@ -731,6 +757,43 @@ class Transpiler:
             array_name = stmt["array_name"]
             struct_data = self._convert_struct_initialization(stmt["struct_data"])
             return f'        self.{array_name}().push(&{struct_data});'
+
+        elif stmt_type == "struct_field_update":
+            struct_var = stmt["struct_var"]
+            key = stmt.get("key")
+            field = stmt["field"]
+            op = stmt["op"]
+            value = self._convert_expression(stmt["value"])
+            snake_field = camel_to_snake(field)
+            snake_var = camel_to_snake(struct_var)
+
+            if key is not None:
+                # mapping[key].field op= value → load-mutate-store
+                converted_key = self._convert_expression(key)
+                load = f'        let mut s = self.{snake_var}(&{converted_key}).get();'
+                if op == '=':
+                    mutate = f'        s.{snake_field} = {value};'
+                else:
+                    op_char = op[0]
+                    mutate = f'        s.{snake_field} = s.{snake_field} {op_char} {value};'
+                store = f'        self.{snake_var}(&{converted_key}).set(&s);'
+                return f'{load}\n{mutate}\n{store}'
+            elif struct_var in getattr(self, '_storage_var_names', set()):
+                # Direct storage struct var → load-mutate-store without key
+                load = f'        let mut s = self.{snake_var}().get();'
+                if op == '=':
+                    mutate = f'        s.{snake_field} = {value};'
+                else:
+                    op_char = op[0]
+                    mutate = f'        s.{snake_field} = s.{snake_field} {op_char} {value};'
+                store = f'        self.{snake_var}().set(&s);'
+                return f'{load}\n{mutate}\n{store}'
+            else:
+                # Local var → direct mutation
+                if op == '=':
+                    return f'        {struct_var}.{snake_field} = {value};'
+                else:
+                    return f'        {struct_var}.{snake_field} {op} {value};'
 
         elif stmt_type == "update":
             target = stmt["target"]
@@ -1043,8 +1106,11 @@ class Transpiler:
         """Extract storage variables, including mappings (single and nested)"""
         vars: list[tuple[str, str, str]] = []
 
+        # Strip struct/function/modifier bodies so their fields are not captured as storage vars
+        content_no_bodies = re.sub(r'\bstruct\s+\w+\s*\{[^}]*\}', '', content, flags=re.DOTALL)
+
         # Simple variables (uint256, address, etc.)
-        for match in re.finditer(r"(uint256|uint128|uint64|uint32|uint16|uint8|int256|int128|int64|int32|int16|int8|string|address|bool|u8)(?:\s+(?:public|private|internal|external))?\s+(\w+)\s*;", content):
+        for match in re.finditer(r"(uint256|uint128|uint64|uint32|uint16|uint8|int256|int128|int64|int32|int16|int8|string|address|bool|u8)(?:\s+(?:public|private|internal|external))?\s+(\w+)\s*;", content_no_bodies):
             vars.append((match.group(1), match.group(2), ""))
 
         # Nested mappings: mapping(type1 => mapping(type2 => type3))

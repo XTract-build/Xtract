@@ -280,6 +280,21 @@ def test_dynamic_storage_detection():
     assert "self.another_unique_field().get()" in result
 
 
+def test_struct_field_update_generates_set():
+    """Test that struct field updates on mapping values emit the load-mutate-store pattern"""
+    sol = load("test_cases/solidity/StructFieldUpdate.sol")
+    actual = Transpiler().convert(sol)
+
+    assert "pub trait StructFieldUpdate" in actual
+    assert "#[storage_mapper(\"listings\")]" in actual
+    # activate function: load-mutate-store for bool field
+    assert "let mut s = self.listings(&seller).get();" in actual
+    assert "s.active = true;" in actual
+    assert "self.listings(&seller).set(&s);" in actual
+    # setPrice function: load-mutate-store for uint field
+    assert "s.price = newPrice;" in actual
+
+
 # Count test to verify we have 50 test cases
 def test_fifty_test_cases():
     """Verify we have at least 50 test cases"""
