@@ -27,8 +27,8 @@ pub trait Vesting {
 
     #[init]
     fn init(&self) {
-        beneficiary = self.blockchain().get_caller();
-        released = BigUint::from(0u32);
+        self.beneficiary().set(&(self.blockchain().get_caller()));
+        self.released().set(&(BigUint::from(0u32)));
     }
 
     #[endpoint]
@@ -36,30 +36,30 @@ pub trait Vesting {
         require!(_beneficiary != address(BigUint::from(0u32), "Requirement not met");
         require!(_amount > BigUint::from(0u32), "Invalid amount");
         require!(_duration > BigUint::from(0u32), "Invalid duration");
-        beneficiary = _beneficiary;
-        totalAmount = _amount;
-        duration = _duration;
-        startTime = self.blockchain().get_block_timestamp();
+        self.beneficiary().set(&_beneficiary);
+        self.total_amount().set(&_amount);
+        self.duration().set(&_duration);
+        self.start_time().set(&(self.blockchain().get_block_timestamp()));
         self.vesting_schedule_created_event(&_beneficiary, &_amount.clone(), &_duration);
     }
 
     #[endpoint]
     fn release(&self) {
-        require!(self.blockchain().get_caller() == beneficiary, "Not beneficiary");
-        let mut releasable: BigUint<Self::Api> = totalAmount - released;
+        require!(self.blockchain().get_caller() == self.beneficiary().get(), "Not beneficiary");
+        let mut releasable: BigUint<Self::Api> = self.total_amount().get() - self.released().get();
         require!(releasable > BigUint::from(0u32), "Nothing to release");
-        released = released + releasable;
-        self.tokens_released_event(&beneficiary, &releasable);
+        self.released().set(&(self.released().get() + releasable));
+        self.tokens_released_event(&self.beneficiary().get(), &releasable);
     }
 
     #[view(getVestedAmount)]
     fn get_vested_amount(&self) -> BigUint<Self::Api> {
-        return released;
+        return self.released().get();
     }
 
     #[view(getRemainingAmount)]
     fn get_remaining_amount(&self) -> BigUint<Self::Api> {
-        return totalAmount - released;
+        return self.total_amount().get() - self.released().get();
     }
 
 }

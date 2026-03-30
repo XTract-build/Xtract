@@ -32,9 +32,9 @@ pub trait SimpleToken {
 
     #[endpoint]
     fn transfer(&self, to: ManagedAddress<Self::Api>, value: BigUint<Self::Api>) -> bool {
-        require!(self.balance_of(&self.blockchain().get_caller()) >= self.value().get(), "Insufficient balance");
+        require!(self.balance_of(&self.blockchain().get_caller()) >= value, "Insufficient balance");
         require!(to != address(BigUint::from(0u32), "Requirement not met");
-        self.transfer_event(&self.blockchain().get_caller(), &to, &self.value().get());
+        self.transfer_event(&self.blockchain().get_caller(), &to, &value);
         return true;
     }
 

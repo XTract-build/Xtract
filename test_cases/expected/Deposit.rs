@@ -30,24 +30,24 @@ pub trait Deposit {
 
     #[init]
     fn init(&self) {
-        owner = self.blockchain().get_caller();
-        minDeposit = BigUint::from(100u32);
-        maxDeposit = BigUint::from(10000u32);
-        totalDeposits = BigUint::from(0u32);
+        self.owner().set(&(self.blockchain().get_caller()));
+        self.min_deposit().set(&(BigUint::from(100u32)));
+        self.max_deposit().set(&(BigUint::from(10000u32)));
+        self.total_deposits().set(&(BigUint::from(0u32)));
     }
 
     #[endpoint]
     fn deposit(&self, amount: BigUint<Self::Api>) {
-        require!(amount >= minDeposit, "Below minimum");
-        require!(amount <= maxDeposit, "Above maximum");
-        totalDeposits = totalDeposits + amount.clone();
+        require!(amount >= self.min_deposit().get(), "Below minimum");
+        require!(amount <= self.max_deposit().get(), "Above maximum");
+        self.total_deposits().set(&(self.total_deposits().get() + amount.clone()));
         self.deposit_made_event(&self.blockchain().get_caller(), &amount.clone());
     }
 
     #[endpoint]
     fn withdraw(&self, amount: BigUint<Self::Api>) {
-        require!(self.userDeposits(&self.blockchain().get_caller()) >= amount, "Insufficient balance");
-        totalDeposits = totalDeposits - amount.clone();
+        require!(self.user_deposits(&self.blockchain().get_caller()) >= amount, "Insufficient balance");
+        self.total_deposits().set(&(self.total_deposits().get() - amount.clone()));
         self.withdrawal_made_event(&self.blockchain().get_caller(), &amount.clone());
     }
 
@@ -55,14 +55,14 @@ pub trait Deposit {
     fn set_limits(&self, newMin: BigUint<Self::Api>, newMax: BigUint<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
         require!(newMin <= newMax, "Invalid limits");
-        minDeposit = newMin;
-        maxDeposit = newMax;
+        self.min_deposit().set(&newMin);
+        self.max_deposit().set(&newMax);
         self.limits_updated_event(&newMin, &newMax);
     }
 
     #[view(getDeposit)]
     fn get_deposit(&self, user: ManagedAddress<Self::Api>) -> BigUint<Self::Api> {
-        return self.userDeposits(&user);
+        return self.user_deposits(&user);
     }
 
 }

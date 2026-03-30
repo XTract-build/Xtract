@@ -24,8 +24,8 @@ pub trait Leaderboard {
 
     #[init]
     fn init(&self) {
-        owner = self.blockchain().get_caller();
-        highestScore = BigUint::from(0u32);
+        self.owner().set(&(self.blockchain().get_caller()));
+        self.highest_score().set(&(BigUint::from(0u32)));
     }
 
     #[endpoint]
@@ -41,10 +41,10 @@ pub trait Leaderboard {
 
     #[endpoint]
     fn claim_leadership(&self) {
-        require!(self.scores(&self.blockchain().get_caller()) > highestScore, "Not highest score");
-        highestScore = self.scores(&self.blockchain().get_caller());
-        leader = self.blockchain().get_caller();
-        self.new_leader_event(&self.blockchain().get_caller(), &highestScore);
+        require!(self.scores(&self.blockchain().get_caller()) > self.highest_score().get(), "Not highest score");
+        self.highest_score().set(&(self.scores(&self.blockchain().get_caller())));
+        self.leader().set(&(self.blockchain().get_caller()));
+        self.new_leader_event(&self.blockchain().get_caller(), &self.highest_score().get());
     }
 
     #[view(getScore)]
@@ -54,7 +54,7 @@ pub trait Leaderboard {
 
     #[view(getLeader)]
     fn get_leader(&self) -> ManagedAddress<Self::Api> {
-        return leader;
+        return self.leader().get();
     }
 
 }

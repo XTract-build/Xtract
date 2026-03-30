@@ -22,14 +22,14 @@ pub trait TokenVault {
     #[endpoint]
     fn deposit(&self, amount: BigUint<Self::Api>) {
         require!(amount > BigUint::from(0u32), "Amount must be positive");
-        totalDeposited = totalDeposited + amount.clone();
+        self.total_deposited().set(&(self.total_deposited().get() + amount.clone()));
         self.deposit_event(&self.blockchain().get_caller(), &amount.clone());
     }
 
     #[endpoint]
     fn withdraw(&self, amount: BigUint<Self::Api>) {
         require!(self.balances(&self.blockchain().get_caller()) >= amount, "Insufficient balance");
-        totalDeposited = totalDeposited - amount.clone();
+        self.total_deposited().set(&(self.total_deposited().get() - amount.clone()));
         self.withdrawal_event(&self.blockchain().get_caller(), &amount.clone());
     }
 

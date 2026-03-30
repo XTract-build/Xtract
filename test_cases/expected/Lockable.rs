@@ -27,8 +27,8 @@ pub trait Lockable {
 
     #[init]
     fn init(&self) {
-        owner = self.blockchain().get_caller();
-        locked = false;
+        self.owner().set(&(self.blockchain().get_caller()));
+        self.locked().set(&false);
         self.value().set(&(BigUint::from(0u32)));
     }
 
@@ -36,17 +36,17 @@ pub trait Lockable {
     fn lock(&self, duration: BigUint<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
         require!(!self.locked().get(), "Contract is locked");
-        locked = true;
-        unlockTime = self.blockchain().get_block_timestamp() + duration;
-        self.locked_event(&unlockTime);
+        self.locked().set(&true);
+        self.unlock_time().set(&(self.blockchain().get_block_timestamp() + duration));
+        self.locked_event(&self.unlock_time().get());
     }
 
     #[endpoint]
     fn unlock(&self) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
         require!(self.locked().get(), "Not locked");
-        require!(self.blockchain().get_block_timestamp() >= unlockTime, "Not yet unlocked");
-        locked = false;
+        require!(self.blockchain().get_block_timestamp() >= self.unlock_time().get(), "Not yet unlocked");
+        self.locked().set(&false);
         self.unlocked_event();
     }
 

@@ -21,15 +21,15 @@ pub trait Whitelist {
 
     #[init]
     fn init(&self) {
-        owner = self.blockchain().get_caller();
-        whitelistCount = BigUint::from(0u32);
+        self.owner().set(&(self.blockchain().get_caller()));
+        self.whitelist_count().set(&(BigUint::from(0u32)));
     }
 
     #[endpoint]
     fn add_to_whitelist(&self, account: ManagedAddress<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
         require!(!self.whitelisted(&account), "Already whitelisted");
-        whitelistCount = whitelistCount + BigUint::from(1u32);
+        self.whitelist_count().set(&(self.whitelist_count().get() + BigUint::from(1u32)));
         self.added_to_whitelist_event(&account);
     }
 
@@ -37,7 +37,7 @@ pub trait Whitelist {
     fn remove_from_whitelist(&self, account: ManagedAddress<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
         require!(self.whitelisted(&account), "Not whitelisted");
-        whitelistCount = whitelistCount - BigUint::from(1u32);
+        self.whitelist_count().set(&(self.whitelist_count().get() - BigUint::from(1u32)));
         self.removed_from_whitelist_event(&account);
     }
 

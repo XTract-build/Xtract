@@ -27,8 +27,8 @@ pub trait Multisig {
 
     #[init]
     fn init(&self) {
-        required = BigUint::from(1u32);
-        transactionCount = BigUint::from(0u32);
+        self.required().set(&(BigUint::from(1u32)));
+        self.transaction_count().set(&(BigUint::from(0u32)));
     }
 
     #[endpoint]
@@ -41,15 +41,15 @@ pub trait Multisig {
     #[endpoint]
     fn set_required(&self, count: BigUint<Self::Api>) {
         require!(self.owners(&self.blockchain().get_caller()), "Not owner");
-        require!(self.count().get() > BigUint::from(0u32), "Invalid count");
-        required = self.count().get();
+        require!(count > BigUint::from(0u32), "Invalid count");
+        self.required().set(&count);
     }
 
     #[endpoint]
     fn submit_transaction(&self) {
         require!(self.owners(&self.blockchain().get_caller()), "Not owner");
-        transactionCount = transactionCount + BigUint::from(1u32);
-        self.transaction_submitted_event(&transactionCount);
+        self.transaction_count().set(&(self.transaction_count().get() + BigUint::from(1u32)));
+        self.transaction_submitted_event(&self.transaction_count().get());
     }
 
     #[endpoint]

@@ -27,20 +27,20 @@ pub trait Staking {
 
     #[init]
     fn init(&self) {
-        rewardRate = BigUint::from(100u32);
+        self.reward_rate().set(&(BigUint::from(100u32)));
     }
 
     #[endpoint]
     fn stake(&self, amount: BigUint<Self::Api>) {
         require!(amount > BigUint::from(0u32), "Cannot stake zero");
-        totalStaked = totalStaked + amount.clone();
+        self.total_staked().set(&(self.total_staked().get() + amount.clone()));
         self.staked_event(&self.blockchain().get_caller(), &amount.clone());
     }
 
     #[endpoint]
     fn unstake(&self, amount: BigUint<Self::Api>) {
         require!(self.stakes(&self.blockchain().get_caller()) >= amount, "Insufficient stake");
-        totalStaked = totalStaked - amount.clone();
+        self.total_staked().set(&(self.total_staked().get() - amount.clone()));
         self.unstaked_event(&self.blockchain().get_caller(), &amount.clone());
     }
 

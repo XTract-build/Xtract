@@ -30,9 +30,9 @@ pub trait Splitter {
 
     #[init]
     fn init(&self) {
-        owner = self.blockchain().get_caller();
-        splitCount = BigUint::from(0u32);
-        totalShares = BigUint::from(0u32);
+        self.owner().set(&(self.blockchain().get_caller()));
+        self.split_count().set(&(BigUint::from(0u32)));
+        self.total_shares().set(&(BigUint::from(0u32)));
     }
 
     #[endpoint]
@@ -40,23 +40,23 @@ pub trait Splitter {
         require!(self.blockchain().get_caller() == owner, "Not owner");
         require!(_recipient != address(BigUint::from(0u32), "Requirement not met");
         require!(_share > BigUint::from(0u32), "Invalid share");
-        splitCount = splitCount + BigUint::from(1u32);
-        totalShares = totalShares + _share;
-        self.recipient_added_event(&splitCount, &_recipient, &_share);
+        self.split_count().set(&(self.split_count().get() + BigUint::from(1u32)));
+        self.total_shares().set(&(self.total_shares().get() + _share));
+        self.recipient_added_event(&self.split_count().get(), &_recipient, &_share);
     }
 
     #[endpoint]
     fn remove_recipient(&self, index: BigUint<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
         require!(self.recipient(&index) != address(BigUint::from(0u32), "Requirement not met");
-        totalShares = totalShares - self.share(&index);
+        self.total_shares().set(&(self.total_shares().get() - self.share(&index)));
         self.recipient_removed_event(&index);
     }
 
     #[endpoint]
     fn split(&self, amount: BigUint<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
-        require!(totalShares > BigUint::from(0u32), "No recipients");
+        require!(self.total_shares().get() > BigUint::from(0u32), "No recipients");
         self.split_executed_event(&amount.clone());
     }
 

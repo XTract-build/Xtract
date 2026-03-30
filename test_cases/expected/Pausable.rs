@@ -18,15 +18,15 @@ pub trait Pausable {
 
     #[init]
     fn init(&self) {
-        owner = self.blockchain().get_caller();
-        paused = false;
+        self.owner().set(&(self.blockchain().get_caller()));
+        self.paused().set(&false);
     }
 
     #[endpoint]
     fn pause(&self) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
         require!(!self.paused().get(), "Paused");
-        paused = true;
+        self.paused().set(&true);
         self.paused_event(&self.blockchain().get_caller());
     }
 
@@ -34,7 +34,7 @@ pub trait Pausable {
     fn unpause(&self) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
         require!(self.paused().get(), "Not paused");
-        paused = false;
+        self.paused().set(&false);
         self.unpaused_event(&self.blockchain().get_caller());
     }
 

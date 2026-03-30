@@ -253,6 +253,33 @@ def test_local_declaration_generates_let():
     assert "let mut result: u64 = sum;" in actual
 
 
+def test_dynamic_storage_detection():
+    """Storage variables not in the old hardcoded whitelist are correctly converted"""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+
+    contract CustomVars {
+        uint256 public my_custom_var;
+        uint256 public anotherUniqueField;
+
+        function getCustom() public view returns (uint256) {
+            return my_custom_var;
+        }
+
+        function getUnique() public view returns (uint256) {
+            return anotherUniqueField;
+        }
+    }
+    """
+    result = Transpiler().convert(sol)
+    # Storage declaration must exist
+    assert '#[storage_mapper("my_custom_var")]' in result or '#[storage_mapper("anotherUniqueField")]' in result
+    # Variable references must be converted to .get() — not left as bare identifiers
+    assert "self.my_custom_var().get()" in result
+    assert "self.another_unique_field().get()" in result
+
+
 # Count test to verify we have 50 test cases
 def test_fifty_test_cases():
     """Verify we have at least 50 test cases"""

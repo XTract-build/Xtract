@@ -27,45 +27,45 @@ pub trait Timer {
 
     #[init]
     fn init(&self) {
-        owner = self.blockchain().get_caller();
-        active = false;
+        self.owner().set(&(self.blockchain().get_caller()));
+        self.active().set(&false);
     }
 
     #[endpoint]
     fn start(&self, _duration: BigUint<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
-        require!(!active, "Already active");
-        startTime = self.blockchain().get_block_timestamp();
-        duration = _duration;
-        active = true;
-        self.timer_started_event(&self.start_time().get(), &duration);
+        require!(!self.active().get(), "Already active");
+        self.start_time().set(&(self.blockchain().get_block_timestamp()));
+        self.duration().set(&_duration);
+        self.active().set(&true);
+        self.timer_started_event(&self.start_time().get(), &self.duration().get());
     }
 
     #[endpoint]
     fn stop(&self) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
-        require!(active, "Not active");
-        active = false;
+        require!(self.active().get(), "Not active");
+        self.active().set(&false);
         self.timer_stopped_event(&self.blockchain().get_block_timestamp());
     }
 
     #[endpoint]
     fn reset(&self) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
-        startTime = BigUint::from(0u32);
-        duration = BigUint::from(0u32);
-        active = false;
+        self.start_time().set(&(BigUint::from(0u32)));
+        self.duration().set(&(BigUint::from(0u32)));
+        self.active().set(&false);
         self.timer_reset_event();
     }
 
     #[view(isExpired)]
     fn is_expired(&self) -> bool {
-        return active;
+        return self.active().get();
     }
 
     #[view(getTimeRemaining)]
     fn get_time_remaining(&self) -> BigUint<Self::Api> {
-        return duration;
+        return self.duration().get();
     }
 
 }
