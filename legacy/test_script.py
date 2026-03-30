@@ -43,13 +43,14 @@ def check_test_case(sol_file, expected_rs_file):
     
     # Read the Solidity input
     solidity_content = read_file(sol_file)
+    solidity_lines = solidity_content.split('\n')
     
     print(f"Solidity file: {sol_file}")
     print(f"Expected Rust file: {expected_rs_file}")
     
     # Extract contract name from Solidity
     contract_name = None
-    for line in solidity_content.split('\n'):
+    for line in solidity_lines:
         if line.strip().startswith('contract '):
             contract_name = line.strip().split(' ')[1].rstrip('{').strip()
             break
@@ -62,7 +63,7 @@ def check_test_case(sol_file, expected_rs_file):
     
     # Check for function names
     functions = []
-    for line in solidity_content.split('\n'):
+    for line in solidity_lines:
         line = line.strip()
         if line.startswith('function '):
             func_name = line.split('function ')[1].split('(')[0].strip()
@@ -102,7 +103,7 @@ def check_test_case(sol_file, expected_rs_file):
     
     # Check for events
     events = []
-    for line in solidity_content.split('\n'):
+    for line in solidity_lines:
         line = line.strip()
         if line.startswith('event '):
             event_name = line.split('event ')[1].split('(')[0].strip()
@@ -124,7 +125,7 @@ def check_test_case(sol_file, expected_rs_file):
             
     # Check for structs
     structs = []
-    for i, line in enumerate(solidity_content.split('\n')):
+    for i, line in enumerate(solidity_lines):
         line = line.strip()
         if line.startswith('struct '):
             struct_name = line.split('struct ')[1].split('{')[0].strip()
@@ -175,10 +176,11 @@ def main():
         
         # Read the Solidity input
         solidity_content = read_file(sol_file)
+        solidity_lines = solidity_content.split('\n')
         
         # Extract contract name from Solidity
         contract_name = None
-        for line in solidity_content.split('\n'):
+        for line in solidity_lines:
             if line.strip().startswith('contract '):
                 contract_name = line.strip().split(' ')[1].rstrip('{').strip()
                 break
@@ -195,7 +197,7 @@ def main():
         
         # Check for function names
         functions = []
-        for line in solidity_content.split('\n'):
+        for line in solidity_lines:
             line = line.strip()
             if line.startswith('function '):
                 func_name = line.split('function ')[1].split('(')[0].strip()
@@ -240,7 +242,7 @@ def main():
         
         # Check for events
         events = []
-        for line in solidity_content.split('\n'):
+        for line in solidity_lines:
             line = line.strip()
             if line.startswith('event '):
                 event_name = line.split('event ')[1].split('(')[0].strip()
@@ -266,7 +268,7 @@ def main():
                 
         # Check for structs
         structs = []
-        for i, line in enumerate(solidity_content.split('\n')):
+        for i, line in enumerate(solidity_lines):
             line = line.strip()
             if line.startswith('struct '):
                 struct_name = line.split('struct ')[1].split('{')[0].strip()
@@ -291,4 +293,4 @@ def main():
     return 0
 
 if __name__ == "__main__":
-    sys.exit(main()) 
+    sys.exit(main())
