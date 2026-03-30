@@ -4,10 +4,11 @@
 
 set -e
 
-MXPY="/Users/kaan/Library/Python/3.9/bin/mxpy"
-WALLET_PEM="/Users/kaan/.multiversx/wallet.pem"
-PROXY_URL="https://devnet-gateway.multiversx.com"
-GAS_LIMIT=50000000
+# Configuration
+MXPY="${MXPY:-mxpy}"
+WALLET_PEM="${WALLET_PEM:-$HOME/.multiversx/wallet.pem}"
+PROXY_URL="${PROXY_URL:-https://devnet-gateway.multiversx.com}"
+GAS_LIMIT=${GAS_LIMIT:-50000000}
 
 # Colors
 GREEN='\033[0;32m'
@@ -20,6 +21,20 @@ NC='\033[0m'
 CONTRACTS=("ERC20Token" "Voting" "Crowdfunding" "NFTMarketplace")
 
 echo -e "${BLUE}=== Building and Deploying Contracts ===${NC}\n"
+
+# Check if mxpy is installed
+if ! command -v "${MXPY}" &> /dev/null; then
+    echo -e "${RED}✗ Error: ${MXPY} is not installed or not in PATH.${NC}"
+    echo -e "${YELLOW}Please install it or set the MXPY environment variable.${NC}"
+    exit 1
+fi
+
+# Check if wallet PEM exists
+if [ ! -f "${WALLET_PEM}" ]; then
+    echo -e "${RED}✗ Error: Wallet PEM file not found at ${WALLET_PEM}${NC}"
+    echo -e "${YELLOW}Please set the WALLET_PEM environment variable to the correct path.${NC}"
+    exit 1
+fi
 
 for CONTRACT_NAME in "${CONTRACTS[@]}"; do
     echo -e "${YELLOW}=== Processing ${CONTRACT_NAME} ===${NC}"

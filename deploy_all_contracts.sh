@@ -5,10 +5,10 @@
 set -e
 
 CONTRACT_NAME="${1:-simple_storage}"
-MXPY="/Users/kaan/Library/Python/3.9/bin/mxpy"
-WALLET_PEM="/Users/kaan/.multiversx/wallet.pem"
-PROXY_URL="https://devnet-gateway.multiversx.com"
-GAS_LIMIT=5000000
+MXPY="${MXPY:-mxpy}"
+WALLET_PEM="${WALLET_PEM:-$HOME/.multiversx/wallet.pem}"
+PROXY_URL="${PROXY_URL:-https://devnet-gateway.multiversx.com}"
+GAS_LIMIT=${GAS_LIMIT:-5000000}
 OUTPUT_DIR="demo/${CONTRACT_NAME}/output"
 WASM_FILE="${OUTPUT_DIR}/${CONTRACT_NAME}.wasm"
 
@@ -19,6 +19,20 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 echo -e "${BLUE}Deploying ${CONTRACT_NAME} contract...${NC}"
+
+# Check if mxpy is installed
+if ! command -v "${MXPY}" &> /dev/null; then
+    echo -e "${RED}Error: ${MXPY} is not installed or not in PATH.${NC}"
+    echo -e "${YELLOW}Please install it or set the MXPY environment variable.${NC}"
+    exit 1
+fi
+
+# Check if wallet PEM exists
+if [ ! -f "${WALLET_PEM}" ]; then
+    echo -e "${RED}Error: Wallet PEM file not found at ${WALLET_PEM}${NC}"
+    echo -e "${YELLOW}Please set the WALLET_PEM environment variable to the correct path.${NC}"
+    exit 1
+fi
 
 # Check if WASM file exists
 if [ ! -f "$WASM_FILE" ]; then
