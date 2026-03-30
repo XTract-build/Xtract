@@ -79,10 +79,29 @@ class Transpiler:
         if match:
             parents_str = match.group(1).strip()
             # Split by comma and clean up
-            for parent in parents_str.split(","):
+            # Use a more robust split that doesn't split on commas inside parentheses
+            parts = []
+            current_part = []
+            paren_depth = 0
+            for char in parents_str:
+                if char == '(':
+                    paren_depth += 1
+                elif char == ')':
+                    paren_depth -= 1
+
+                if char == ',' and paren_depth == 0:
+                    parts.append("".join(current_part))
+                    current_part = []
+                else:
+                    current_part.append(char)
+            parts.append("".join(current_part))
+
+            for parent in parts:
                 parent_name = parent.strip()
                 # Handle constructor arguments in inheritance: Parent(arg1, arg2)
-                parent_name = re.sub(r'\([^)]*\)', '', parent_name).strip()
+                # Use a more robust regex or loop to handle nested parentheses
+                while re.search(r'\([^()]*\)', parent_name):
+                    parent_name = re.sub(r'\([^()]*\)', '', parent_name).strip()
                 if parent_name:
                     parents.append(parent_name)
         return parents
