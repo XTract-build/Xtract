@@ -39,7 +39,7 @@ pub trait TokenMinter {
 
     #[init]
     fn init(&self) {
-        owner = self.blockchain().get_caller();
+        self.owner().set(&(self.blockchain().get_caller()));
         self.name().set(&"MintableToken");
         self.symbol().set(&"MTK");
         self.total_supply().set(&(BigUint::from(0u32)));

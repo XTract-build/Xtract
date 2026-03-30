@@ -33,48 +33,48 @@ pub trait Escrow {
 
     #[init]
     fn init(&self) {
-        buyer = self.blockchain().get_caller();
-        released = false;
-        refunded = false;
+        self.buyer().set(&(self.blockchain().get_caller()));
+        self.released().set(&false);
+        self.refunded().set(&false);
     }
 
     #[endpoint]
     fn set_seller(&self, _seller: ManagedAddress<Self::Api>) {
-        require!(self.blockchain().get_caller() == buyer, "Only buyer");
-        seller = _seller;
+        require!(self.blockchain().get_caller() == self.buyer().get(), "Only buyer");
+        self.seller().set(&_seller);
     }
 
     #[endpoint]
     fn set_arbiter(&self, _arbiter: ManagedAddress<Self::Api>) {
-        require!(self.blockchain().get_caller() == buyer, "Only buyer");
-        arbiter = _arbiter;
+        require!(self.blockchain().get_caller() == self.buyer().get(), "Only buyer");
+        self.arbiter().set(&_arbiter);
     }
 
     #[endpoint]
     fn deposit(&self, _amount: BigUint<Self::Api>) {
-        require!(self.blockchain().get_caller() == buyer, "Only buyer");
-        require!(!released, "Already released");
-        require!(!refunded, "Already refunded");
-        amount = _amount;
-        self.deposited_event(&buyer, &_amount.clone());
+        require!(self.blockchain().get_caller() == self.buyer().get(), "Only buyer");
+        require!(!self.released().get(), "Already released");
+        require!(!self.refunded().get(), "Already refunded");
+        self.amount().set(&_amount);
+        self.deposited_event(&self.buyer().get(), &_amount.clone());
     }
 
     #[endpoint]
     fn release(&self) {
-        require!(self.blockchain().get_caller() == buyer, "Only buyer");
-        require!(!released, "Already released");
-        require!(!refunded, "Already refunded");
-        released = true;
-        self.released_event(&seller, &amount.clone());
+        require!(self.blockchain().get_caller() == self.buyer().get(), "Only buyer");
+        require!(!self.released().get(), "Already released");
+        require!(!self.refunded().get(), "Already refunded");
+        self.released().set(&true);
+        self.released_event(&self.seller().get(), &self.amount().get());
     }
 
     #[endpoint]
     fn refund(&self) {
-        require!(self.blockchain().get_caller() == arbiter, "Only arbiter");
-        require!(!released, "Already released");
-        require!(!refunded, "Already refunded");
-        refunded = true;
-        self.refunded_event(&buyer, &amount.clone());
+        require!(self.blockchain().get_caller() == self.arbiter().get(), "Only arbiter");
+        require!(!self.released().get(), "Already released");
+        require!(!self.refunded().get(), "Already refunded");
+        self.refunded().set(&true);
+        self.refunded_event(&self.buyer().get(), &self.amount().get());
     }
 
 }

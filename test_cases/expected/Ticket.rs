@@ -30,34 +30,34 @@ pub trait Ticket {
 
     #[init]
     fn init(&self) {
-        owner = self.blockchain().get_caller();
-        ticketPrice = BigUint::from(100u32);
-        totalTickets = BigUint::from(1000u32);
-        soldTickets = BigUint::from(0u32);
+        self.owner().set(&(self.blockchain().get_caller()));
+        self.ticket_price().set(&(BigUint::from(100u32)));
+        self.total_tickets().set(&(BigUint::from(1000u32)));
+        self.sold_tickets().set(&(BigUint::from(0u32)));
     }
 
     #[endpoint]
     fn buy_ticket(&self, quantity: BigUint<Self::Api>) {
-        require!(soldTickets + quantity <= totalTickets, "Not enough tickets");
-        soldTickets = soldTickets + quantity;
+        require!(self.sold_tickets().get() + quantity <= self.total_tickets().get(), "Not enough tickets");
+        self.sold_tickets().set(&(self.sold_tickets().get() + quantity));
         self.ticket_purchased_event(&self.blockchain().get_caller(), &quantity);
     }
 
     #[endpoint]
     fn transfer_ticket(&self, to: ManagedAddress<Self::Api>, quantity: BigUint<Self::Api>) {
-        require!(self.ticketBalance(&self.blockchain().get_caller()) >= quantity, "Insufficient tickets");
+        require!(self.ticket_balance(&self.blockchain().get_caller()) >= quantity, "Insufficient tickets");
         self.ticket_transferred_event(&self.blockchain().get_caller(), &to, &quantity);
     }
 
     #[endpoint]
     fn use_ticket(&self, quantity: BigUint<Self::Api>) {
-        require!(self.ticketBalance(&self.blockchain().get_caller()) >= quantity, "Insufficient tickets");
+        require!(self.ticket_balance(&self.blockchain().get_caller()) >= quantity, "Insufficient tickets");
         self.ticket_used_event(&self.blockchain().get_caller(), &quantity);
     }
 
     #[view(getBalance)]
     fn get_balance(&self, holder: ManagedAddress<Self::Api>) -> BigUint<Self::Api> {
-        return self.ticketBalance(&holder);
+        return self.ticket_balance(&holder);
     }
 
 }

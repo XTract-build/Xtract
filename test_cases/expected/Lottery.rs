@@ -33,41 +33,41 @@ pub trait Lottery {
 
     #[init]
     fn init(&self) {
-        owner = self.blockchain().get_caller();
-        ticketPrice = BigUint::from(0u32);
-        ticketCount = BigUint::from(0u32);
-        prizePool = BigUint::from(0u32);
-        lotteryOpen = false;
+        self.owner().set(&(self.blockchain().get_caller()));
+        self.ticket_price().set(&(BigUint::from(0u32)));
+        self.ticket_count().set(&(BigUint::from(0u32)));
+        self.prize_pool().set(&(BigUint::from(0u32)));
+        self.lottery_open().set(&false);
     }
 
     #[endpoint]
     fn open_lottery(&self, price: BigUint<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
-        require!(!lotteryOpen, "Already open");
-        ticketPrice = price;
-        lotteryOpen = true;
+        require!(!self.lottery_open().get(), "Already open");
+        self.ticket_price().set(&price);
+        self.lottery_open().set(&true);
         self.lottery_opened_event(&price.clone());
     }
 
     #[endpoint]
     fn buy_ticket(&self) {
-        require!(lotteryOpen, "Lottery closed");
-        ticketCount = ticketCount + BigUint::from(1u32);
-        prizePool = prizePool + ticketPrice;
-        self.ticket_purchased_event(&self.blockchain().get_caller(), &ticketCount);
+        require!(self.lottery_open().get(), "Lottery closed");
+        self.ticket_count().set(&(self.ticket_count().get() + BigUint::from(1u32)));
+        self.prize_pool().set(&(self.prize_pool().get() + self.ticket_price().get()));
+        self.ticket_purchased_event(&self.blockchain().get_caller(), &self.ticket_count().get());
     }
 
     #[endpoint]
     fn close_lottery(&self) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
-        require!(lotteryOpen, "Already closed");
-        lotteryOpen = false;
+        require!(self.lottery_open().get(), "Already closed");
+        self.lottery_open().set(&false);
         self.lottery_closed_event();
     }
 
     #[view(getPrizePool)]
     fn get_prize_pool(&self) -> BigUint<Self::Api> {
-        return prizePool;
+        return self.prize_pool().get();
     }
 
 }

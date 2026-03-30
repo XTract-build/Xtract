@@ -30,16 +30,16 @@ pub trait TokenBridge {
 
     #[init]
     fn init(&self) {
-        owner = self.blockchain().get_caller();
-        bridgeFee = BigUint::from(10u32);
-        totalBridged = BigUint::from(0u32);
+        self.owner().set(&(self.blockchain().get_caller()));
+        self.bridge_fee().set(&(BigUint::from(10u32)));
+        self.total_bridged().set(&(BigUint::from(0u32)));
     }
 
     #[endpoint]
     fn initiate_bridge(&self, amount: BigUint<Self::Api>, nonce: BigUint<Self::Api>) {
-        require!(amount > bridgeFee, "Amount too small");
-        require!(!self.processedNonces(&nonce), "Nonce already used");
-        totalBridged = totalBridged + amount.clone();
+        require!(amount > self.bridge_fee().get(), "Amount too small");
+        require!(!self.processed_nonces(&nonce), "Nonce already used");
+        self.total_bridged().set(&(self.total_bridged().get() + amount.clone()));
         self.bridge_initiated_event(&self.blockchain().get_caller(), &amount.clone(), &nonce);
     }
 
@@ -52,13 +52,13 @@ pub trait TokenBridge {
     #[endpoint]
     fn set_fee(&self, newFee: BigUint<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
-        self.fee_updated_event(&bridgeFee, &newFee);
-        bridgeFee = newFee;
+        self.fee_updated_event(&self.bridge_fee().get(), &newFee);
+        self.bridge_fee().set(&newFee);
     }
 
     #[view(getBridgedAmount)]
     fn get_bridged_amount(&self, user: ManagedAddress<Self::Api>) -> BigUint<Self::Api> {
-        return self.bridgedAmount(&user);
+        return self.bridged_amount(&user);
     }
 
 }

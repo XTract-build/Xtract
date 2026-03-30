@@ -30,35 +30,35 @@ pub trait Membership {
 
     #[init]
     fn init(&self) {
-        owner = self.blockchain().get_caller();
-        membershipFee = BigUint::from(100u32);
-        memberCount = BigUint::from(0u32);
+        self.owner().set(&(self.blockchain().get_caller()));
+        self.membership_fee().set(&(BigUint::from(100u32)));
+        self.member_count().set(&(BigUint::from(0u32)));
     }
 
     #[endpoint]
     fn join(&self) {
-        require!(!self.isMember(&self.blockchain().get_caller()), "Already a member");
-        memberCount = memberCount + BigUint::from(1u32);
+        require!(!self.is_member(&self.blockchain().get_caller()), "Already a member");
+        self.member_count().set(&(self.member_count().get() + BigUint::from(1u32)));
         self.member_joined_event(&self.blockchain().get_caller(), &self.blockchain().get_block_timestamp());
     }
 
     #[endpoint]
     fn leave(&self) {
-        require!(self.isMember(&self.blockchain().get_caller()), "Not a member");
-        memberCount = memberCount - BigUint::from(1u32);
+        require!(self.is_member(&self.blockchain().get_caller()), "Not a member");
+        self.member_count().set(&(self.member_count().get() - BigUint::from(1u32)));
         self.member_left_event(&self.blockchain().get_caller());
     }
 
     #[endpoint]
     fn set_fee(&self, newFee: BigUint<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
-        self.fee_updated_event(&membershipFee, &newFee);
-        membershipFee = newFee;
+        self.fee_updated_event(&self.membership_fee().get(), &newFee);
+        self.membership_fee().set(&newFee);
     }
 
     #[view(checkMembership)]
     fn check_membership(&self, account: ManagedAddress<Self::Api>) -> bool {
-        return self.isMember(&account);
+        return self.is_member(&account);
     }
 
 }

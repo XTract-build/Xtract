@@ -30,9 +30,9 @@ pub trait Governance {
 
     #[init]
     fn init(&self) {
-        governor = self.blockchain().get_caller();
+        self.governor().set(&(self.blockchain().get_caller()));
         self.proposal_count().set(&(BigUint::from(0u32)));
-        votingPeriod = BigUint::from(86400u32);
+        self.voting_period().set(&(BigUint::from(86400u32)));
     }
 
     #[endpoint]
@@ -43,19 +43,19 @@ pub trait Governance {
 
     #[endpoint]
     fn vote(&self, proposalId: BigUint<Self::Api>, support: bool) {
-        require!(!self.has_voted().get()[self.blockchain().get_caller()], "Already voted");
+        require!(!self.has_voted(&self.blockchain().get_caller()), "Already voted");
         self.voted_event(&proposalId.clone(), &self.blockchain().get_caller(), &support);
     }
 
     #[endpoint]
     fn execute(&self, proposalId: BigUint<Self::Api>) {
-        require!(self.blockchain().get_caller() == governor, "Not governor");
+        require!(self.blockchain().get_caller() == self.governor().get(), "Not governor");
         self.proposal_executed_event(&proposalId.clone());
     }
 
     #[view(getVotes)]
     fn get_votes(&self, proposalId: BigUint<Self::Api>) -> BigUint<Self::Api> {
-        return self.proposalVotes(&proposalId);
+        return self.proposal_votes(&proposalId);
     }
 
 }

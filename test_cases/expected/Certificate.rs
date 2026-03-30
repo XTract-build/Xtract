@@ -30,35 +30,35 @@ pub trait Certificate {
 
     #[init]
     fn init(&self) {
-        issuer = self.blockchain().get_caller();
-        certificateCount = BigUint::from(0u32);
+        self.issuer().set(&(self.blockchain().get_caller()));
+        self.certificate_count().set(&(BigUint::from(0u32)));
     }
 
     #[endpoint]
     fn issue_certificate(&self, recipient: ManagedAddress<Self::Api>) {
-        require!(self.blockchain().get_caller() == issuer, "Not issuer");
+        require!(self.blockchain().get_caller() == self.issuer().get(), "Not issuer");
         require!(recipient != address(BigUint::from(0u32), "Requirement not met");
-        certificateCount = certificateCount + BigUint::from(1u32);
-        self.certificate_issued_event(&certificateCount, &recipient);
+        self.certificate_count().set(&(self.certificate_count().get() + BigUint::from(1u32)));
+        self.certificate_issued_event(&self.certificate_count().get(), &recipient);
     }
 
     #[endpoint]
     fn revoke_certificate(&self, certId: BigUint<Self::Api>) {
-        require!(self.blockchain().get_caller() == issuer, "Not issuer");
-        require!(self.certificateValid(&certId), "Not valid");
+        require!(self.blockchain().get_caller() == self.issuer().get(), "Not issuer");
+        require!(self.certificate_valid(&certId), "Not valid");
         self.certificate_revoked_event(&certId);
     }
 
     #[endpoint]
     fn transfer_certificate(&self, certId: BigUint<Self::Api>, to: ManagedAddress<Self::Api>) {
-        require!(self.certificateOwner(&certId) == self.blockchain().get_caller(), "Not owner");
-        require!(self.certificateValid(&certId), "Not valid");
+        require!(self.certificate_owner(&certId) == self.blockchain().get_caller(), "Not owner");
+        require!(self.certificate_valid(&certId), "Not valid");
         self.certificate_transferred_event(&certId, &self.blockchain().get_caller(), &to);
     }
 
     #[view(isValid)]
     fn is_valid(&self, certId: BigUint<Self::Api>) -> bool {
-        return self.certificateValid(&certId);
+        return self.certificate_valid(&certId);
     }
 
 }

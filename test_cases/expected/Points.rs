@@ -24,14 +24,14 @@ pub trait Points {
 
     #[init]
     fn init(&self) {
-        admin = self.blockchain().get_caller();
-        totalPoints = BigUint::from(0u32);
+        self.admin().set(&(self.blockchain().get_caller()));
+        self.total_points().set(&(BigUint::from(0u32)));
     }
 
     #[endpoint]
     fn add_points(&self, user: ManagedAddress<Self::Api>, amount: BigUint<Self::Api>) {
         require!(self.blockchain().get_caller() == self.admin().get(), "Not admin");
-        totalPoints = totalPoints + amount.clone();
+        self.total_points().set(&(self.total_points().get() + amount.clone()));
         self.points_added_event(&user, &amount.clone());
     }
 
@@ -39,7 +39,7 @@ pub trait Points {
     fn deduct_points(&self, user: ManagedAddress<Self::Api>, amount: BigUint<Self::Api>) {
         require!(self.blockchain().get_caller() == self.admin().get(), "Not admin");
         require!(self.points(&user) >= amount, "Insufficient points");
-        totalPoints = totalPoints - amount.clone();
+        self.total_points().set(&(self.total_points().get() - amount.clone()));
         self.points_deducted_event(&user, &amount.clone());
     }
 

@@ -24,8 +24,8 @@ pub trait AccessControl {
 
     #[init]
     fn init(&self) {
-        admin = self.blockchain().get_caller();
-        operatorCount = BigUint::from(0u32);
+        self.admin().set(&(self.blockchain().get_caller()));
+        self.operator_count().set(&(BigUint::from(0u32)));
     }
 
     #[endpoint]
@@ -33,14 +33,14 @@ pub trait AccessControl {
         require!(self.blockchain().get_caller() == self.admin().get(), "Not admin");
         require!(newAdmin != address(BigUint::from(0u32), "Requirement not met");
         self.admin_changed_event(&self.admin().get(), &newAdmin);
-        admin = newAdmin;
+        self.admin().set(&newAdmin);
     }
 
     #[endpoint]
     fn add_operator(&self, operator: ManagedAddress<Self::Api>) {
         require!(self.blockchain().get_caller() == self.admin().get(), "Not admin");
         require!(!self.operators(&operator), "Already operator");
-        operatorCount = operatorCount + BigUint::from(1u32);
+        self.operator_count().set(&(self.operator_count().get() + BigUint::from(1u32)));
         self.operator_added_event(&operator);
     }
 
@@ -48,7 +48,7 @@ pub trait AccessControl {
     fn remove_operator(&self, operator: ManagedAddress<Self::Api>) {
         require!(self.blockchain().get_caller() == self.admin().get(), "Not admin");
         require!(self.operators(&operator), "Not operator");
-        operatorCount = operatorCount - BigUint::from(1u32);
+        self.operator_count().set(&(self.operator_count().get() - BigUint::from(1u32)));
         self.operator_removed_event(&operator);
     }
 

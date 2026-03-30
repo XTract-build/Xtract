@@ -27,8 +27,8 @@ pub trait Referral {
 
     #[init]
     fn init(&self) {
-        owner = self.blockchain().get_caller();
-        referralBonus = BigUint::from(100u32);
+        self.owner().set(&(self.blockchain().get_caller()));
+        self.referral_bonus().set(&(BigUint::from(100u32)));
     }
 
     #[endpoint]
@@ -41,19 +41,19 @@ pub trait Referral {
     #[endpoint]
     fn pay_bonus(&self, referrer: ManagedAddress<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
-        let mut bonus: BigUint<Self::Api> = referralBonus;
+        let mut bonus: BigUint<Self::Api> = self.referral_bonus().get();
         self.bonus_paid_event(&referrer, &bonus);
     }
 
     #[endpoint]
     fn set_bonus(&self, newBonus: BigUint<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
-        referralBonus = newBonus;
+        self.referral_bonus().set(&newBonus);
     }
 
     #[view(getReferralCount)]
     fn get_referral_count(&self, referrer: ManagedAddress<Self::Api>) -> BigUint<Self::Api> {
-        return self.referralCount(&referrer);
+        return self.referral_count(&referrer);
     }
 
 }

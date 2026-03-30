@@ -24,16 +24,16 @@ pub trait TokenSwap {
 
     #[init]
     fn init(&self) {
-        owner = self.blockchain().get_caller();
-        rate = BigUint::from(100u32);
-        totalSwapped = BigUint::from(0u32);
+        self.owner().set(&(self.blockchain().get_caller()));
+        self.rate().set(&(BigUint::from(100u32)));
+        self.total_swapped().set(&(BigUint::from(0u32)));
     }
 
     #[endpoint]
     fn swap(&self, amountIn: BigUint<Self::Api>) {
         require!(amountIn > BigUint::from(0u32), "Invalid amount");
-        let mut amountOut: BigUint<Self::Api> = amountIn * rate / BigUint::from(100u32);
-        totalSwapped = totalSwapped + amountIn;
+        let mut amountOut: BigUint<Self::Api> = amountIn * self.rate().get() / BigUint::from(100u32);
+        self.total_swapped().set(&(self.total_swapped().get() + amountIn));
         self.swapped_event(&self.blockchain().get_caller(), &amountIn.clone(), &amountOut.clone());
     }
 
@@ -41,13 +41,13 @@ pub trait TokenSwap {
     fn set_rate(&self, newRate: BigUint<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
         require!(newRate > BigUint::from(0u32), "Invalid rate");
-        self.rate_updated_event(&rate, &newRate);
-        rate = newRate;
+        self.rate_updated_event(&self.rate().get(), &newRate);
+        self.rate().set(&newRate);
     }
 
     #[view(getSwapHistory)]
     fn get_swap_history(&self, user: ManagedAddress<Self::Api>) -> BigUint<Self::Api> {
-        return self.swapHistory(&user);
+        return self.swap_history(&user);
     }
 
 }

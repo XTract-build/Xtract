@@ -30,33 +30,33 @@ pub trait OrderBook {
 
     #[init]
     fn init(&self) {
-        owner = self.blockchain().get_caller();
-        orderCount = BigUint::from(0u32);
+        self.owner().set(&(self.blockchain().get_caller()));
+        self.order_count().set(&(BigUint::from(0u32)));
     }
 
     #[endpoint]
     fn create_order(&self, amount: BigUint<Self::Api>) {
         require!(amount > BigUint::from(0u32), "Invalid amount");
-        orderCount = orderCount + BigUint::from(1u32);
-        self.order_created_event(&orderCount, &self.blockchain().get_caller(), &amount.clone());
+        self.order_count().set(&(self.order_count().get() + BigUint::from(1u32)));
+        self.order_created_event(&self.order_count().get(), &self.blockchain().get_caller(), &amount.clone());
     }
 
     #[endpoint]
     fn cancel_order(&self, orderId: BigUint<Self::Api>) {
-        require!(self.orderOwner(&orderId) == self.blockchain().get_caller(), "Not order owner");
-        require!(self.orderActive(&orderId), "Order not active");
+        require!(self.order_owner(&orderId) == self.blockchain().get_caller(), "Not order owner");
+        require!(self.order_active(&orderId), "Order not active");
         self.order_cancelled_event(&orderId);
     }
 
     #[endpoint]
     fn fill_order(&self, orderId: BigUint<Self::Api>) {
-        require!(self.orderActive(&orderId), "Order not active");
+        require!(self.order_active(&orderId), "Order not active");
         self.order_filled_event(&orderId, &self.blockchain().get_caller());
     }
 
     #[view(getOrderAmount)]
     fn get_order_amount(&self, orderId: BigUint<Self::Api>) -> BigUint<Self::Api> {
-        return self.orderAmount(&orderId);
+        return self.order_amount(&orderId);
     }
 
 }

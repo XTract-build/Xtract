@@ -18,7 +18,7 @@ pub trait OnlyOwner {
 
     #[init]
     fn init(&self) {
-        owner = self.blockchain().get_caller();
+        self.owner().set(&(self.blockchain().get_caller()));
     }
 
     #[endpoint]
@@ -33,7 +33,7 @@ pub trait OnlyOwner {
         require!(self.blockchain().get_caller() == owner, "Not owner");
         require!(newOwner != address(BigUint::from(0u32), "Requirement not met");
         self.ownership_transferred_event(&owner, &newOwner);
-        owner = newOwner;
+        self.owner().set(&newOwner);
     }
 
 }

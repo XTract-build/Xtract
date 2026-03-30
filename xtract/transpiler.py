@@ -56,6 +56,11 @@ def camel_to_snake(name: str) -> str:
 
 
 class Transpiler:
+    def __init__(self):
+        # Populated by convert() from _extract_storage() before any expression conversion
+        self._storage_var_names: set[str] = set()
+        self._mapping_var_names: dict[str, int] = {}  # name → number of keys
+
     def parse_contract_name(self, content: str) -> str | None:
         # Match contract definition at beginning of line (not in comments)
         # Remove single-line comments first
@@ -700,15 +705,8 @@ class Transpiler:
             # Check if this is a storage variable assignment
             # Extract variable name (handle cases like "balance = balance - _value")
             left_var = left.split()[0] if ' ' in left else left
-            storage_vars = [
-                'value', 'name', 'symbol', 'decimals', 'totalSupply', 'balance',
-                'chairperson', 'votingEnd', 'votingClosed', 'hasVoted', 'votedProposalId',
-                'proposalVoteCount', 'proposalCount', 'nextTokenId',
-                'campaignCreator', 'campaignGoal', 'campaignPledged', 'campaignClaimed', 'count',
-                'currentTokenId', 'currentOwner', 'currentPrice', 'currentForSale', 'previousOwner'
-            ]
-            
-            if left_var in storage_vars:
+
+            if left_var in self._storage_var_names:
                 snake_left = camel_to_snake(left_var)
                 # Wrap right side in parentheses if it contains operations
                 if any(op in right for op in ['+', '-', '*', '/', '(', ')']):
@@ -948,33 +946,13 @@ class Transpiler:
             'offerIndex', 'offer_index', 'id', 'required', 'provided'
         ]
 
-        # Storage variables that should be converted to getters (common patterns)
-        # Note: mappings like balanceOf should NOT be converted to .get() since they're accessed with []
-        storage_vars = [
-            'value', 'totalSupply', 'name', 'symbol', 'decimals', 'balance',
-            'chairperson', 'votingEnd', 'votingClosed', 'hasVoted', 'votedProposalId',
-            'proposalVoteCount', 'proposalCount', 'nextTokenId', 'campaigns', 'crowdfundingEnd',
-            'campaignCreator', 'campaignGoal', 'campaignPledged', 'campaignClaimed', 'count',
-            'currentTokenId', 'currentOwner', 'currentPrice', 'currentForSale', 'previousOwner',
-            'owner', 'admin', 'paused', 'locked', 'initialized', 'deadline', 'startTime', 'endTime',
-            'minAmount', 'maxAmount', 'fee', 'feePercent', 'treasury', 'rewardRate', 'lastUpdateTime'
-        ]
-
-        # Mapping variables that should be converted to mappers (not getters)
-        # Includes both single and nested mapping names
-        mapping_vars = [
-            'balanceOf', 'allowance', 'voters', 'proposals', 'nfts', 'offersForNFT',
-            'balances', 'approved', 'isApprovedForAll', 'tokenOwner', 'tokenApprovals',
-            'operatorApprovals', 'stakes', 'rewards', 'userInfo', 'poolInfo'
-        ]
-
         def convert_var(match):
             var = match.group(1)
             if var in exclude_patterns:
                 return var
-            elif var in storage_vars:
+            elif var in self._storage_var_names:
                 return f'self.{camel_to_snake(var)}().get()'
-            elif var in mapping_vars:
+            elif var in self._mapping_var_names:
                 return f'self.{camel_to_snake(var)}()'
             else:
                 return var
@@ -1131,6 +1109,17 @@ class Transpiler:
         modifiers = self.parse_modifiers(solidity_content)
         functions = self.parse_functions(solidity_content)
         storage = self._extract_storage(solidity_content)
+
+        # Build lookup sets used by _convert_expression and _convert_statement
+        self._storage_var_names = {
+            var_name for var_type, var_name, _ in storage
+            if var_type not in ("mapping", "nested_mapping")
+        }
+        self._mapping_var_names = {
+            var_name: (2 if var_type == "nested_mapping" else 1)
+            for var_type, var_name, _ in storage
+            if var_type in ("mapping", "nested_mapping")
+        }
 
         lines: list[str] = []
         lines.append("#![no_std]\n")

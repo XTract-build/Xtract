@@ -30,34 +30,34 @@ pub trait Badge {
 
     #[init]
     fn init(&self) {
-        admin = self.blockchain().get_caller();
-        badgeCount = BigUint::from(0u32);
+        self.admin().set(&(self.blockchain().get_caller()));
+        self.badge_count().set(&(BigUint::from(0u32)));
     }
 
     #[endpoint]
     fn create_badge(&self, memory: ManagedBuffer<Self::Api>) {
         require!(self.blockchain().get_caller() == self.admin().get(), "Not admin");
-        badgeCount = badgeCount + BigUint::from(1u32);
-        self.badge_created_event(&badgeCount, &self.name().get());
+        self.badge_count().set(&(self.badge_count().get() + BigUint::from(1u32)));
+        self.badge_created_event(&self.badge_count().get(), &name);
     }
 
     #[endpoint]
     fn award_badge(&self, user: ManagedAddress<Self::Api>, badgeId: BigUint<Self::Api>) {
         require!(self.blockchain().get_caller() == self.admin().get(), "Not admin");
-        require!(!self.hasBadge(&user, &badgeId), "Already has badge");
+        require!(!self.has_badge(&user, &badgeId), "Already has badge");
         self.badge_awarded_event(&user, &badgeId);
     }
 
     #[endpoint]
     fn revoke_badge(&self, user: ManagedAddress<Self::Api>, badgeId: BigUint<Self::Api>) {
         require!(self.blockchain().get_caller() == self.admin().get(), "Not admin");
-        require!(self.hasBadge(&user, &badgeId), "Does not have badge");
+        require!(self.has_badge(&user, &badgeId), "Does not have badge");
         self.badge_revoked_event(&user, &badgeId);
     }
 
     #[view(checkBadge)]
     fn check_badge(&self, user: ManagedAddress<Self::Api>, badgeId: BigUint<Self::Api>) -> bool {
-        return self.hasBadge(&user, &badgeId);
+        return self.has_badge(&user, &badgeId);
     }
 
 }

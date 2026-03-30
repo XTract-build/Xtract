@@ -30,33 +30,33 @@ pub trait Poll {
 
     #[init]
     fn init(&self) {
-        creator = self.blockchain().get_caller();
-        optionCount = BigUint::from(0u32);
-        pollActive = false;
+        self.creator().set(&(self.blockchain().get_caller()));
+        self.option_count().set(&(BigUint::from(0u32)));
+        self.poll_active().set(&false);
     }
 
     #[endpoint]
     fn create_poll(&self, options: BigUint<Self::Api>) {
-        require!(self.blockchain().get_caller() == creator, "Not creator");
-        require!(!pollActive, "Poll already active");
-        optionCount = options;
-        pollActive = true;
+        require!(self.blockchain().get_caller() == self.creator().get(), "Not creator");
+        require!(!self.poll_active().get(), "Poll already active");
+        self.option_count().set(&options);
+        self.poll_active().set(&true);
         self.poll_created_event(&self.blockchain().get_caller(), &options);
     }
 
     #[endpoint]
     fn cast_vote(&self, option: BigUint<Self::Api>) {
-        require!(pollActive, "Poll not active");
-        require!(!self.has_voted().get()[self.blockchain().get_caller()], "Already voted");
-        require!(option < optionCount, "Invalid option");
+        require!(self.poll_active().get(), "Poll not active");
+        require!(!self.has_voted(&self.blockchain().get_caller()), "Already voted");
+        require!(option < self.option_count().get(), "Invalid option");
         self.vote_cast_event(&self.blockchain().get_caller(), &option);
     }
 
     #[endpoint]
     fn close_poll(&self) {
-        require!(self.blockchain().get_caller() == creator, "Not creator");
-        require!(pollActive, "Poll not active");
-        pollActive = false;
+        require!(self.blockchain().get_caller() == self.creator().get(), "Not creator");
+        require!(self.poll_active().get(), "Poll not active");
+        self.poll_active().set(&false);
         self.poll_closed_event(&BigUint::from(0u32));
     }
 

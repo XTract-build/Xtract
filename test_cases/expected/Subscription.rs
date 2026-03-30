@@ -27,8 +27,8 @@ pub trait Subscription {
 
     #[init]
     fn init(&self) {
-        owner = self.blockchain().get_caller();
-        subscriptionPrice = BigUint::from(100u32);
+        self.owner().set(&(self.blockchain().get_caller()));
+        self.subscription_price().set(&(BigUint::from(100u32)));
     }
 
     #[endpoint]
@@ -40,20 +40,20 @@ pub trait Subscription {
 
     #[endpoint]
     fn unsubscribe(&self) {
-        require!(self.isSubscribed(&self.blockchain().get_caller()), "Not subscribed");
+        require!(self.is_subscribed(&self.blockchain().get_caller()), "Not subscribed");
         self.unsubscribed_event(&self.blockchain().get_caller());
     }
 
     #[endpoint]
     fn set_price(&self, newPrice: BigUint<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
-        self.price_updated_event(&subscriptionPrice, &newPrice);
-        subscriptionPrice = newPrice;
+        self.price_updated_event(&self.subscription_price().get(), &newPrice);
+        self.subscription_price().set(&newPrice);
     }
 
     #[view(checkSubscription)]
     fn check_subscription(&self, user: ManagedAddress<Self::Api>) -> bool {
-        return self.isSubscribed(&user);
+        return self.is_subscribed(&user);
     }
 
 }
