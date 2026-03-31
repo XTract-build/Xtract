@@ -117,8 +117,8 @@ class Transpiler:
             (r'\.staticcall\s*\(', "Staticcall is not supported - use view functions"),
             (r'\bselfdestruct\s*\(', "Selfdestruct is not supported on MultiversX"),
             (r'\bnew\s+\w+\s*\(', "Contract creation with 'new' requires manual handling"),
-            (r'abi\.encode', "ABI encoding functions require manual conversion"),
-            (r'abi\.decode', "ABI decoding functions require manual conversion"),
+            (r'abi\.encodeWithSelector', "abi.encodeWithSelector has no MultiversX equivalent — stub emitted"),
+            (r'abi\.decode', "abi.decode requires manual conversion — use codec::top_decode_from_managed_buffer"),
             (r'\blibrary\s+\w+', "Libraries require manual flattening"),
             (r'\busing\s+\w+\s+for\s+', "Using-for directives require manual flattening"),
         ]
@@ -381,6 +381,67 @@ class Transpiler:
                     return i
             i += 1
         return -1
+
+    def _extract_call_args(self, args_str: str) -> list[str]:
+        """Split comma-separated call arguments respecting nested parentheses."""
+        args: list[str] = []
+        depth = 0
+        buf: list[str] = []
+        for ch in args_str:
+            if ch == '(':
+                depth += 1
+                buf.append(ch)
+            elif ch == ')':
+                depth -= 1
+                buf.append(ch)
+            elif ch == ',' and depth == 0:
+                args.append(''.join(buf).strip())
+                buf = []
+            else:
+                buf.append(ch)
+        if buf:
+            args.append(''.join(buf).strip())
+        return [a for a in args if a]
+
+    def _convert_abi_call(self, expr: str) -> str | None:
+        """Detect and convert abi.encode*, abi.decode calls to ManagedBuffer equivalents.
+        Returns a Rust snippet string, or None if expr is not an abi call."""
+        expr_stripped = expr.strip()
+        m = re.match(
+            r'^abi\.(encodePacked|encodeWithSelector|encode|decode)\s*\((.+)\)$',
+            expr_stripped,
+            re.DOTALL,
+        )
+        if not m:
+            return None
+
+        func = m.group(1)
+        raw_args = m.group(2)
+        args = self._extract_call_args(raw_args)
+
+        if func == "encode":
+            lines = ["{\n            let mut __buf = ManagedBuffer::new();"]
+            for arg in args:
+                converted = self._convert_expression(arg)
+                lines.append(f"            codec::top_encode_to_managed_buffer(&{converted}, &mut __buf);")
+            lines.append("            __buf\n        }")
+            return "\n".join(lines)
+
+        if func == "encodePacked":
+            lines = ["{\n            let mut __buf = ManagedBuffer::new();"]
+            for arg in args:
+                converted = self._convert_expression(arg)
+                lines.append(f"            __buf.append(&ManagedBuffer::from(&{converted}.to_bytes_be_buffer()));")
+            lines.append("            __buf\n        }")
+            return "\n".join(lines)
+
+        if func == "decode":
+            return "todo!(/* abi.decode: use codec::top_decode_from_managed_buffer */)"
+
+        if func == "encodeWithSelector":
+            return "todo!(/* abi.encodeWithSelector: no MultiversX equivalent */)"
+
+        return None
 
     def _extract_control_flow(self, body: str) -> tuple[list[dict], str]:
         """Extract if/else and loop statements, returning them and the remaining body"""
@@ -1029,6 +1090,11 @@ class Transpiler:
 
     def _convert_expression(self, expr: str) -> str:
         """Convert Solidity expressions to MultiversX equivalents"""
+        # Early dispatch for abi calls before any other transformation
+        abi_result = self._convert_abi_call(expr)
+        if abi_result is not None:
+            return abi_result
+
         # Handle msg.sender
         expr = expr.replace("msg.sender", "self.blockchain().get_caller()")
 

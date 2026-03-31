@@ -333,6 +333,30 @@ def test_do_while_generates_loop_break():
     assert "break;" in result
 
 
+def test_abi_encode_generates_managed_buffer():
+    """Test that abi.encode/encodePacked produce ManagedBuffer block expressions"""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+
+    contract AbiTest {
+        function encodeTwo(uint256 a, uint256 b) public pure returns (bytes memory) {
+            return abi.encode(a, b);
+        }
+
+        function encodePackedTwo(uint256 a, uint256 b) public pure returns (bytes memory) {
+            return abi.encodePacked(a, b);
+        }
+    }
+    """
+    result = Transpiler().convert(sol)
+    assert "ManagedBuffer::new()" in result
+    assert "codec::top_encode_to_managed_buffer(&a, &mut __buf)" in result
+    assert "codec::top_encode_to_managed_buffer(&b, &mut __buf)" in result
+    assert "__buf.append(&ManagedBuffer::from(&a.to_bytes_be_buffer()))" in result
+    assert "__buf.append(&ManagedBuffer::from(&b.to_bytes_be_buffer()))" in result
+
+
 def test_unchecked_generates_passthrough():
     """Test that unchecked blocks are stripped but inner statements remain"""
     sol = """
