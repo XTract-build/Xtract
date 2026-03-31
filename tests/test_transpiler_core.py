@@ -10,6 +10,9 @@ It tests 50 different contract patterns including:
 - Various DeFi patterns
 """
 
+import json
+import subprocess
+import sys
 from pathlib import Path
 import pytest
 
@@ -440,6 +443,23 @@ def test_unknown_library_warning():
 
     warning_messages = [w.message for w in transpiler._warnings]
     assert any("MyCustomLib" in msg for msg in warning_messages)
+
+
+def test_json_flag_output():
+    """Test --json flag outputs valid JSON with expected fields"""
+    sol_path = "test_cases/solidity/ERC20Token.sol"
+    result = subprocess.run(
+        [sys.executable, "-m", "xtract.cli", "--json", sol_path],
+        capture_output=True,
+        text=True,
+    )
+    output = json.loads(result.stdout)
+
+    assert output["success"] is True
+    assert "#[multiversx_sc::contract]" in output["code"]
+    assert isinstance(output["warnings"], list)
+    assert isinstance(output["errors"], list)
+    assert result.returncode == 0
 
 
 # Count test to verify we have 50 test cases

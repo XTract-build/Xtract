@@ -1,9 +1,10 @@
+import json
 import sys
 from pathlib import Path
 from typing import Optional
 import click
 
-from .transpiler import transpile, transpile_with_diagnostics
+from .transpiler import transpile, transpile_with_diagnostics, Transpiler
 
 
 @click.command()
@@ -11,13 +12,28 @@ from .transpiler import transpile, transpile_with_diagnostics
 @click.argument("output", required=False, type=click.Path(dir_okay=False, path_type=Path))
 @click.option("-v", "--verbose", is_flag=True, help="Show detailed diagnostics and warnings")
 @click.option("-q", "--quiet", is_flag=True, help="Suppress all output except errors")
-def main(input: Path, output: Optional[Path], verbose: bool, quiet: bool):
+@click.option("--json", "output_json", is_flag=True, default=False, help="Output structured JSON instead of Rust code")
+def main(input: Path, output: Optional[Path], verbose: bool, quiet: bool, output_json: bool):
     """Transpile a Solidity file to MultiversX Rust.
 
     INPUT: Solidity .sol file path
     OUTPUT: Optional Rust .rs output path; defaults to INPUT with .rs extension
     """
     try:
+        if output_json:
+            content = input.read_text()
+            result = Transpiler().convert_with_diagnostics(content)
+            print(json.dumps({
+                "success": result.success,
+                "code": result.code,
+                "warnings": [
+                    {"message": w.message, "line": w.line, "severity": w.severity}
+                    for w in result.warnings
+                ],
+                "errors": result.errors,
+            }))
+            raise SystemExit(0 if result.success else 1)
+
         out = output if output is not None else input.with_suffix(".rs")
 
         if verbose:
