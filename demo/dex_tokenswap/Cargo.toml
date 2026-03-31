@@ -1,0 +1,21 @@
+[package]
+name = "dex-token-swap"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+path = "src/DexTokenSwap.rs"
+
+[dependencies.multiversx-sc]
+version = "0.53.0"
+features = []
+
+[dev-dependencies.multiversx-sc-scenario]
+version = "0.53.0"
+
+[workspace]
+members = [
+    ".",
+    "meta",
+]

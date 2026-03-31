@@ -269,15 +269,47 @@ New features are additive:
 - [IMPLEMENTATION_SUMMARY.md](./IMPLEMENTATION_SUMMARY.md) - Feature summary
 - [TEST_RESULTS.md](./TEST_RESULTS.md) - Complete test results
 
+## Recent Improvements (post-v0.30)
+
+### A1 — Variable declaration (`fix/variable-declaration-let-mut`)
+
+Local variable declarations now emit valid Rust instead of a stub:
+
+```solidity
+uint256 amountOut = (amountIn * reserveOut) / (reserveIn + amountIn);
+```
+
+```rust
+// Before A1
+// TODO: declaration - uint256 amountOut = …
+
+// After A1
+let mut amount_out: BigUint<Self::Api> = (amountIn * reserveOut) / (reserveIn + amountIn);
+```
+
+### A2 — Dynamic storage detection (`fix/dynamic-storage-detection`)
+
+Storage variables are now detected directly from the contract source instead
+of a hardcoded whitelist. Any `mapping` or scalar state variable name
+(including custom names like `reserves`, `liquidity`, `poolBalance`) is
+automatically emitted as a `#[storage_mapper]` and correctly resolved in
+expression context.
+
+### Real-world example: DexTokenSwap
+
+A deployable constant-product AMM DEX demonstrates both fixes end-to-end.
+See `demo/dex_tokenswap/` and [REAL_WORLD_EXAMPLES.md](../REAL_WORLD_EXAMPLES.md).
+
 ## Next Steps
 
 Upcoming features:
+- Mapping reads in expression context: auto-append `.get()` after mapper calls
+- Storage write statements: emit `self.x(&key).set(&val)` for `x[key] = val`
+- Full modifier body inlining: `locked = true/false` wrappers for `nonReentrant`
 - Advanced inheritance patterns (diamond inheritance)
 - External contract calls
 - Do-while loops
 - Try-catch block handling
-- SDK development for seamless MultiversX integration
-- Real-world sample projects for contract deployment
 
 ## License
 

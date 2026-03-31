@@ -1,0 +1,12 @@
+[package]
+name = "dex-token-swap-meta"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies.dex-token-swap]
+path = ".."
+
+[dependencies.multiversx-sc-meta-lib]
+version = "0.53.0"
+default-features = false

@@ -1,0 +1,187 @@
+{
+    "buildInfo": {
+        "rustc": {
+            "version": "1.93.0",
+            "commitHash": "254b59607d4417e9dffbc307138ae5c86280fe4c",
+            "commitDate": "2026-01-19",
+            "channel": "Stable",
+            "short": "rustc 1.93.0 (254b59607 2026-01-19)"
+        },
+        "contractCrate": {
+            "name": "dex-token-swap",
+            "version": "0.1.0"
+        },
+        "framework": {
+            "name": "multiversx-sc",
+            "version": "0.53.2"
+        }
+    },
+    "name": "DexTokenSwap",
+    "constructor": {
+        "inputs": [],
+        "outputs": []
+    },
+    "endpoints": [
+        {
+            "name": "deposit",
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "token",
+                    "type": "Address"
+                },
+                {
+                    "name": "amount",
+                    "type": "BigUint"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "withdraw",
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "token",
+                    "type": "Address"
+                },
+                {
+                    "name": "amount",
+                    "type": "BigUint"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "swap",
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "tokenIn",
+                    "type": "Address"
+                },
+                {
+                    "name": "amountIn",
+                    "type": "BigUint"
+                },
+                {
+                    "name": "tokenOut",
+                    "type": "Address"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "docs": [
+                "Spot price scaled by 1e18: reserveOut * 1e18 / reserveIn"
+            ],
+            "name": "getPrice",
+            "mutability": "readonly",
+            "inputs": [
+                {
+                    "name": "tokenIn",
+                    "type": "Address"
+                },
+                {
+                    "name": "tokenOut",
+                    "type": "Address"
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "BigUint"
+                }
+            ]
+        },
+        {
+            "docs": [
+                "Raw reserve balance for a token"
+            ],
+            "name": "getReserve",
+            "mutability": "readonly",
+            "inputs": [
+                {
+                    "name": "token",
+                    "type": "Address"
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "BigUint"
+                }
+            ]
+        }
+    ],
+    "events": [
+        {
+            "identifier": "Deposit",
+            "inputs": [
+                {
+                    "name": "token",
+                    "type": "Address",
+                    "indexed": true
+                },
+                {
+                    "name": "provider",
+                    "type": "Address",
+                    "indexed": true
+                },
+                {
+                    "name": "amount",
+                    "type": "BigUint"
+                }
+            ]
+        },
+        {
+            "identifier": "Swap",
+            "inputs": [
+                {
+                    "name": "tokenIn",
+                    "type": "Address",
+                    "indexed": true
+                },
+                {
+                    "name": "tokenOut",
+                    "type": "Address",
+                    "indexed": true
+                },
+                {
+                    "name": "trader",
+                    "type": "Address",
+                    "indexed": true
+                },
+                {
+                    "name": "amountIn",
+                    "type": "BigUint",
+                    "indexed": true
+                },
+                {
+                    "name": "amountOut",
+                    "type": "BigUint"
+                }
+            ]
+        },
+        {
+            "identifier": "Withdraw",
+            "inputs": [
+                {
+                    "name": "token",
+                    "type": "Address",
+                    "indexed": true
+                },
+                {
+                    "name": "provider",
+                    "type": "Address",
+                    "indexed": true
+                },
+                {
+                    "name": "amount",
+                    "type": "BigUint"
+                }
+            ]
+        }
+    ],
+    "esdtAttributes": [],
+    "hasCallback": false,
+    "types": {}
+}
