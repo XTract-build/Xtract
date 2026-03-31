@@ -108,7 +108,7 @@ class Transpiler:
             (r'\bcatch\s*\{', "Try-catch blocks are not supported - use require/revert instead"),
             (r'\bassembly\s*\{', "Inline assembly is not supported"),
             (r'\bunchecked\s*\{', "Unchecked blocks are not yet supported"),
-            (r'\bdelete\s+', "Delete operation requires manual review"),
+            # delete is now handled - no warning needed
             (r'\.call\s*\{', "Low-level calls are not supported - use direct contract calls"),
             (r'\.delegatecall\s*\(', "Delegatecall is not supported on MultiversX"),
             (r'\.staticcall\s*\(', "Staticcall is not supported - use view functions"),
@@ -544,6 +544,14 @@ class Transpiler:
                 })
                 continue
 
+            # Handle delete statements (must come before declaration patterns)
+            if delete_match := re.match(r'delete\s+(.+)', line):
+                statements.append({
+                    "type": "delete",
+                    "target": delete_match.group(1).strip()
+                })
+                continue
+
             # Handle variable declarations: type name = expr
             if decl_match := re.match(r'([a-zA-Z_]\w*(?:\[\d*\])?)\s+([a-zA-Z_]\w*)\s*=\s*(.+)', line):
                 statements.append({
@@ -859,6 +867,25 @@ class Transpiler:
 
             body_code = '\n'.join(body_lines) if body_lines else '            // empty block'
             return f'        while {condition} {{\n{body_code}\n        }}'
+
+        elif stmt_type == "delete":
+            target = stmt["target"]
+            # Nested mapping: name[key1][key2]
+            nested = re.match(r'(\w+)\[([^\]]+)\]\[([^\]]+)\]', target)
+            if nested:
+                var_name = camel_to_snake(nested.group(1))
+                key1 = nested.group(2).strip()
+                key2 = nested.group(3).strip()
+                return f'        self.{var_name}(&{key1}, &{key2}).clear();'
+            # Single mapping: name[key]
+            single = re.match(r'(\w+)\[([^\]]+)\]', target)
+            if single:
+                var_name = camel_to_snake(single.group(1))
+                key = single.group(2).strip()
+                return f'        self.{var_name}(&{key}).clear();'
+            # Simple variable
+            var_name = camel_to_snake(target)
+            return f'        self.{var_name}().clear();'
 
         return f'        // TODO: unhandled statement: {stmt}'
 

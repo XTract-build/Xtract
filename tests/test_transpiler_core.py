@@ -253,6 +253,20 @@ def test_local_declaration_generates_let():
     assert "let mut result: u64 = sum;" in actual
 
 
+def test_delete_generates_clear():
+    """Test that delete statements emit .clear() calls"""
+    sol = load("test_cases/solidity/DeleteOp.sol")
+    expected = load("test_cases/expected/DeleteOp.rs")
+    actual = Transpiler().convert(sol)
+    assert normalize(actual) == normalize(expected), (
+        f"Delete transpilation mismatch:\n"
+        f"Expected:\n{normalize(expected)}\n\nActual:\n{normalize(actual)}"
+    )
+    assert "self.counter().clear();" in actual
+    assert "self.balances(&user).clear();" in actual
+    assert "self.allowance(&owner, &spender).clear();" in actual
+
+
 # Count test to verify we have 50 test cases
 def test_fifty_test_cases():
     """Verify we have at least 50 test cases"""
