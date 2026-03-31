@@ -33,8 +33,8 @@ pub trait Vault {
 
     #[init]
     fn init(&self) {
-        guardian = self.blockchain().get_caller();
-        withdrawalDelay = BigUint::from(86400u32);
+        self.guardian().set(&(self.blockchain().get_caller()));
+        self.withdrawal_delay().set(&(BigUint::from(86400u32)));
     }
 
     #[endpoint]
@@ -46,21 +46,21 @@ pub trait Vault {
     #[endpoint]
     fn request_withdrawal(&self, amount: BigUint<Self::Api>) {
         require!(self.balances(&self.blockchain().get_caller()) >= amount, "Insufficient balance");
-        self.withdrawal_requested_event(&self.blockchain().get_caller(), &amount.clone(), &self.withdrawalTime(&self.blockchain().get_caller()));
+        self.withdrawal_requested_event(&self.blockchain().get_caller(), &amount.clone(), &self.withdrawal_time(&self.blockchain().get_caller()));
     }
 
     #[endpoint]
     fn complete_withdrawal(&self) {
-        require!(self.pendingWithdrawals(&self.blockchain().get_caller()) > BigUint::from(0u32), "No pending withdrawal");
-        require!(self.blockchain().get_block_timestamp() >= self.withdrawalTime(&self.blockchain().get_caller()), "Delay not passed");
-        let mut amount: BigUint<Self::Api> = self.pendingWithdrawals(&self.blockchain().get_caller());
+        require!(self.pending_withdrawals(&self.blockchain().get_caller()) > BigUint::from(0u32), "No pending withdrawal");
+        require!(self.blockchain().get_block_timestamp() >= self.withdrawal_time(&self.blockchain().get_caller()), "Delay not passed");
+        let mut amount: BigUint<Self::Api> = self.pending_withdrawals(&self.blockchain().get_caller());
         self.withdrawal_completed_event(&self.blockchain().get_caller(), &amount.clone());
     }
 
     #[endpoint]
     fn cancel_withdrawal(&self) {
-        require!(self.pendingWithdrawals(&self.blockchain().get_caller()) > BigUint::from(0u32), "No pending withdrawal");
-        let mut amount: BigUint<Self::Api> = self.pendingWithdrawals(&self.blockchain().get_caller());
+        require!(self.pending_withdrawals(&self.blockchain().get_caller()) > BigUint::from(0u32), "No pending withdrawal");
+        let mut amount: BigUint<Self::Api> = self.pending_withdrawals(&self.blockchain().get_caller());
         self.withdrawal_cancelled_event(&self.blockchain().get_caller());
     }
 

@@ -27,40 +27,40 @@ pub trait Config {
 
     #[init]
     fn init(&self) {
-        owner = self.blockchain().get_caller();
+        self.owner().set(&(self.blockchain().get_caller()));
     }
 
     #[endpoint]
     fn set_uint(&self, memory: ManagedBuffer<Self::Api>, value: BigUint<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
-        self.uint_config_set_event(&key, &self.value().get());
+        self.uint_config_set_event(&key, &value);
     }
 
     #[endpoint]
     fn set_bool(&self, memory: ManagedBuffer<Self::Api>, value: bool) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
-        self.bool_config_set_event(&key, &self.value().get());
+        self.bool_config_set_event(&key, &value);
     }
 
     #[endpoint]
     fn set_address(&self, memory: ManagedBuffer<Self::Api>, value: ManagedAddress<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
-        self.address_config_set_event(&key, &self.value().get());
+        self.address_config_set_event(&key, &value);
     }
 
     #[view(getUint)]
     fn get_uint(&self, memory: ManagedBuffer<Self::Api>) -> BigUint<Self::Api> {
-        return self.uintConfig(&key);
+        return self.uint_config(&key);
     }
 
     #[view(getBool)]
     fn get_bool(&self, memory: ManagedBuffer<Self::Api>) -> bool {
-        return self.boolConfig(&key);
+        return self.bool_config(&key);
     }
 
     #[view(getAddress)]
     fn get_address(&self, memory: ManagedBuffer<Self::Api>) -> ManagedAddress<Self::Api> {
-        return self.addressConfig(&key);
+        return self.address_config(&key);
     }
 
 }

@@ -27,33 +27,33 @@ pub trait Claimer {
 
     #[init]
     fn init(&self) {
-        owner = self.blockchain().get_caller();
-        claimAmount = BigUint::from(100u32);
-        totalClaimed = BigUint::from(0u32);
+        self.owner().set(&(self.blockchain().get_caller()));
+        self.claim_amount().set(&(BigUint::from(100u32)));
+        self.total_claimed().set(&(BigUint::from(0u32)));
     }
 
     #[endpoint]
     fn claim(&self) {
-        require!(!self.hasClaimed(&self.blockchain().get_caller()), "Already claimed");
-        totalClaimed = totalClaimed + claimAmount;
-        self.claimed_event(&self.blockchain().get_caller(), &claimAmount, &self.blockchain().get_block_timestamp());
+        require!(!self.has_claimed(&self.blockchain().get_caller()), "Already claimed");
+        self.total_claimed().set(&(self.total_claimed().get() + self.claim_amount().get()));
+        self.claimed_event(&self.blockchain().get_caller(), &self.claim_amount().get(), &self.blockchain().get_block_timestamp());
     }
 
     #[endpoint]
     fn set_claim_amount(&self, newAmount: BigUint<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
-        self.claim_amount_updated_event(&claimAmount, &newAmount);
-        claimAmount = newAmount;
+        self.claim_amount_updated_event(&self.claim_amount().get(), &newAmount);
+        self.claim_amount().set(&newAmount);
     }
 
     #[view(checkClaimed)]
     fn check_claimed(&self, user: ManagedAddress<Self::Api>) -> bool {
-        return self.hasClaimed(&user);
+        return self.has_claimed(&user);
     }
 
     #[view(getTotalClaimed)]
     fn get_total_claimed(&self) -> BigUint<Self::Api> {
-        return totalClaimed;
+        return self.total_claimed().get();
     }
 
 }

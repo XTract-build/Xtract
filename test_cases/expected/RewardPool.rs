@@ -30,21 +30,21 @@ pub trait RewardPool {
 
     #[init]
     fn init(&self) {
-        owner = self.blockchain().get_caller();
-        totalRewards = BigUint::from(0u32);
-        rewardRate = BigUint::from(100u32);
+        self.owner().set(&(self.blockchain().get_caller()));
+        self.total_rewards().set(&(BigUint::from(0u32)));
+        self.reward_rate().set(&(BigUint::from(100u32)));
     }
 
     #[endpoint]
     fn add_rewards(&self, amount: BigUint<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
-        totalRewards = totalRewards + amount.clone();
+        self.total_rewards().set(&(self.total_rewards().get() + amount.clone()));
         self.reward_added_event(&amount.clone());
     }
 
     #[endpoint]
     fn claim_reward(&self) {
-        let mut reward: BigUint<Self::Api> = self.pendingRewards(&self.blockchain().get_caller());
+        let mut reward: BigUint<Self::Api> = self.pending_rewards(&self.blockchain().get_caller());
         require!(reward > BigUint::from(0u32), "No rewards");
         self.reward_claimed_event(&self.blockchain().get_caller(), &reward);
     }
@@ -53,12 +53,12 @@ pub trait RewardPool {
     fn update_reward_rate(&self, newRate: BigUint<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
         self.reward_rate_updated_event(&self.reward_rate().get(), &newRate);
-        rewardRate = newRate;
+        self.reward_rate().set(&newRate);
     }
 
     #[view(getPendingReward)]
     fn get_pending_reward(&self, user: ManagedAddress<Self::Api>) -> BigUint<Self::Api> {
-        return self.pendingRewards(&user);
+        return self.pending_rewards(&user);
     }
 
 }

@@ -267,6 +267,48 @@ def test_delete_generates_clear():
     assert "self.allowance(&owner, &spender).clear();" in actual
 
 
+def test_dynamic_storage_detection():
+    """Storage variables not in the old hardcoded whitelist are correctly converted"""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+
+    contract CustomVars {
+        uint256 public my_custom_var;
+        uint256 public anotherUniqueField;
+
+        function getCustom() public view returns (uint256) {
+            return my_custom_var;
+        }
+
+        function getUnique() public view returns (uint256) {
+            return anotherUniqueField;
+        }
+    }
+    """
+    result = Transpiler().convert(sol)
+    # Storage declaration must exist
+    assert '#[storage_mapper("my_custom_var")]' in result or '#[storage_mapper("anotherUniqueField")]' in result
+    # Variable references must be converted to .get() — not left as bare identifiers
+    assert "self.my_custom_var().get()" in result
+    assert "self.another_unique_field().get()" in result
+
+
+def test_struct_field_update_generates_set():
+    """Test that struct field updates on mapping values emit the load-mutate-store pattern"""
+    sol = load("test_cases/solidity/StructFieldUpdate.sol")
+    actual = Transpiler().convert(sol)
+
+    assert "pub trait StructFieldUpdate" in actual
+    assert "#[storage_mapper(\"listings\")]" in actual
+    # activate function: load-mutate-store for bool field
+    assert "let mut s = self.listings(&seller).get();" in actual
+    assert "s.active = true;" in actual
+    assert "self.listings(&seller).set(&s);" in actual
+    # setPrice function: load-mutate-store for uint field
+    assert "s.price = newPrice;" in actual
+
+
 # Count test to verify we have 50 test cases
 def test_fifty_test_cases():
     """Verify we have at least 50 test cases"""

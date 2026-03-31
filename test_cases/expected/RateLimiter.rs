@@ -30,15 +30,15 @@ pub trait RateLimiter {
 
     #[init]
     fn init(&self) {
-        owner = self.blockchain().get_caller();
-        limit = BigUint::from(10u32);
-        window = BigUint::from(3600u32);
+        self.owner().set(&(self.blockchain().get_caller()));
+        self.limit().set(&(BigUint::from(10u32)));
+        self.window().set(&(BigUint::from(3600u32)));
     }
 
     #[endpoint]
     fn perform_action(&self) {
-        require!(self.actionCount(&self.blockchain().get_caller()) < limit, "Rate limit exceeded");
-        self.action_performed_event(&self.blockchain().get_caller(), &self.actionCount(&self.blockchain().get_caller()));
+        require!(self.action_count(&self.blockchain().get_caller()) < self.limit().get(), "Rate limit exceeded");
+        self.action_performed_event(&self.blockchain().get_caller(), &self.action_count(&self.blockchain().get_caller()));
     }
 
     #[endpoint]
@@ -49,20 +49,20 @@ pub trait RateLimiter {
     #[endpoint]
     fn set_limit(&self, newLimit: BigUint<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
-        self.limit_updated_event(&limit, &newLimit);
-        limit = newLimit;
+        self.limit_updated_event(&self.limit().get(), &newLimit);
+        self.limit().set(&newLimit);
     }
 
     #[endpoint]
     fn set_window(&self, newWindow: BigUint<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
-        self.window_updated_event(&window, &newWindow);
-        window = newWindow;
+        self.window_updated_event(&self.window().get(), &newWindow);
+        self.window().set(&newWindow);
     }
 
     #[view(getActionCount)]
     fn get_action_count(&self, user: ManagedAddress<Self::Api>) -> BigUint<Self::Api> {
-        return self.actionCount(&user);
+        return self.action_count(&user);
     }
 
 }

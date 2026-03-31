@@ -24,32 +24,32 @@ pub trait Timelock {
 
     #[init]
     fn init(&self) {
-        owner = self.blockchain().get_caller();
-        claimed = false;
+        self.owner().set(&(self.blockchain().get_caller()));
+        self.claimed().set(&false);
     }
 
     #[endpoint]
     fn deposit(&self, _amount: BigUint<Self::Api>, _unlockTime: BigUint<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
-        require!(!claimed, "Already claimed");
+        require!(!self.claimed().get(), "Already claimed");
         require!(_unlockTime > self.blockchain().get_block_timestamp(), "Unlock time in past");
-        amount = _amount;
-        unlockTime = _unlockTime;
+        self.amount().set(&_amount);
+        self.unlock_time().set(&_unlockTime);
         self.deposited_event(&self.blockchain().get_caller(), &_amount.clone(), &_unlockTime);
     }
 
     #[endpoint]
     fn claim(&self) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
-        require!(!claimed, "Already claimed");
-        require!(self.blockchain().get_block_timestamp() >= unlockTime, "Not yet unlocked");
-        claimed = true;
-        self.claimed_event(&self.blockchain().get_caller(), &amount.clone());
+        require!(!self.claimed().get(), "Already claimed");
+        require!(self.blockchain().get_block_timestamp() >= self.unlock_time().get(), "Not yet unlocked");
+        self.claimed().set(&true);
+        self.claimed_event(&self.blockchain().get_caller(), &self.amount().get());
     }
 
     #[view(getTimeRemaining)]
     fn get_time_remaining(&self) -> BigUint<Self::Api> {
-        return unlockTime;
+        return self.unlock_time().get();
     }
 
 }

@@ -18,25 +18,25 @@ pub trait Registry {
 
     #[init]
     fn init(&self) {
-        owner = self.blockchain().get_caller();
+        self.owner().set(&(self.blockchain().get_caller()));
     }
 
     #[endpoint]
     fn register(&self, memory: ManagedBuffer<Self::Api>, addr: ManagedAddress<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
         require!(addr != address(BigUint::from(0u32), "Requirement not met");
-        self.registered_event(&self.name().get(), &addr);
+        self.registered_event(&name, &addr);
     }
 
     #[endpoint]
     fn unregister(&self, memory: ManagedBuffer<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
-        self.unregistered_event(&self.name().get());
+        self.unregistered_event(&name);
     }
 
     #[view(lookup)]
     fn lookup(&self, memory: ManagedBuffer<Self::Api>) -> ManagedAddress<Self::Api> {
-        return self.registry(&self.name().get());
+        return self.registry(&name);
     }
 
 }

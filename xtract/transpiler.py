@@ -56,6 +56,11 @@ def camel_to_snake(name: str) -> str:
 
 
 class Transpiler:
+    def __init__(self):
+        # Populated by convert() from _extract_storage() before any expression conversion
+        self._storage_var_names: set[str] = set()
+        self._mapping_var_names: dict[str, int] = {}  # name → number of keys
+
     def parse_contract_name(self, content: str) -> str | None:
         # Match contract definition at beginning of line (not in comments)
         # Remove single-line comments first
@@ -552,6 +557,32 @@ class Transpiler:
                 })
                 continue
 
+            # Detect struct field assignments before the general assignment handler.
+            # Pattern A: mapping[key].field op= value
+            if mapping_field_match := re.match(r'(\w+)\[([^\]]+)\]\.(\w+)\s*([+\-*/]?=)\s*(.+)', line):
+                statements.append({
+                    "type": "struct_field_update",
+                    "struct_var": mapping_field_match.group(1),
+                    "key": mapping_field_match.group(2).strip(),
+                    "field": mapping_field_match.group(3),
+                    "op": mapping_field_match.group(4),
+                    "value": mapping_field_match.group(5).strip(),
+                })
+                continue
+
+            # Pattern B: var.field op= value (local var or direct storage struct)
+            if struct_field_match := re.match(r'(\w+)\.(\w+)\s*([+\-*/]?=)\s*(.+)', line):
+                statements.append({
+                    "type": "struct_field_update",
+                    "struct_var": struct_field_match.group(1),
+                    "key": None,
+                    "field": struct_field_match.group(2),
+                    "op": struct_field_match.group(3),
+                    "value": struct_field_match.group(4).strip(),
+                })
+                continue
+
+
             # Handle variable declarations: type name = expr
             if decl_match := re.match(r'([a-zA-Z_]\w*(?:\[\d*\])?)\s+([a-zA-Z_]\w*)\s*=\s*(.+)', line):
                 statements.append({
@@ -708,15 +739,8 @@ class Transpiler:
             # Check if this is a storage variable assignment
             # Extract variable name (handle cases like "balance = balance - _value")
             left_var = left.split()[0] if ' ' in left else left
-            storage_vars = [
-                'value', 'name', 'symbol', 'decimals', 'totalSupply', 'balance',
-                'chairperson', 'votingEnd', 'votingClosed', 'hasVoted', 'votedProposalId',
-                'proposalVoteCount', 'proposalCount', 'nextTokenId',
-                'campaignCreator', 'campaignGoal', 'campaignPledged', 'campaignClaimed', 'count',
-                'currentTokenId', 'currentOwner', 'currentPrice', 'currentForSale', 'previousOwner'
-            ]
-            
-            if left_var in storage_vars:
+
+            if left_var in self._storage_var_names:
                 snake_left = camel_to_snake(left_var)
                 # Wrap right side in parentheses if it contains operations
                 if any(op in right for op in ['+', '-', '*', '/', '(', ')']):
@@ -741,6 +765,43 @@ class Transpiler:
             array_name = stmt["array_name"]
             struct_data = self._convert_struct_initialization(stmt["struct_data"])
             return f'        self.{array_name}().push(&{struct_data});'
+
+        elif stmt_type == "struct_field_update":
+            struct_var = stmt["struct_var"]
+            key = stmt.get("key")
+            field = stmt["field"]
+            op = stmt["op"]
+            value = self._convert_expression(stmt["value"])
+            snake_field = camel_to_snake(field)
+            snake_var = camel_to_snake(struct_var)
+
+            if key is not None:
+                # mapping[key].field op= value → load-mutate-store
+                converted_key = self._convert_expression(key)
+                load = f'        let mut s = self.{snake_var}(&{converted_key}).get();'
+                if op == '=':
+                    mutate = f'        s.{snake_field} = {value};'
+                else:
+                    op_char = op[0]
+                    mutate = f'        s.{snake_field} = s.{snake_field} {op_char} {value};'
+                store = f'        self.{snake_var}(&{converted_key}).set(&s);'
+                return f'{load}\n{mutate}\n{store}'
+            elif struct_var in getattr(self, '_storage_var_names', set()):
+                # Direct storage struct var → load-mutate-store without key
+                load = f'        let mut s = self.{snake_var}().get();'
+                if op == '=':
+                    mutate = f'        s.{snake_field} = {value};'
+                else:
+                    op_char = op[0]
+                    mutate = f'        s.{snake_field} = s.{snake_field} {op_char} {value};'
+                store = f'        self.{snake_var}().set(&s);'
+                return f'{load}\n{mutate}\n{store}'
+            else:
+                # Local var → direct mutation
+                if op == '=':
+                    return f'        {struct_var}.{snake_field} = {value};'
+                else:
+                    return f'        {struct_var}.{snake_field} {op} {value};'
 
         elif stmt_type == "update":
             target = stmt["target"]
@@ -975,33 +1036,13 @@ class Transpiler:
             'offerIndex', 'offer_index', 'id', 'required', 'provided'
         ]
 
-        # Storage variables that should be converted to getters (common patterns)
-        # Note: mappings like balanceOf should NOT be converted to .get() since they're accessed with []
-        storage_vars = [
-            'value', 'totalSupply', 'name', 'symbol', 'decimals', 'balance',
-            'chairperson', 'votingEnd', 'votingClosed', 'hasVoted', 'votedProposalId',
-            'proposalVoteCount', 'proposalCount', 'nextTokenId', 'campaigns', 'crowdfundingEnd',
-            'campaignCreator', 'campaignGoal', 'campaignPledged', 'campaignClaimed', 'count',
-            'currentTokenId', 'currentOwner', 'currentPrice', 'currentForSale', 'previousOwner',
-            'owner', 'admin', 'paused', 'locked', 'initialized', 'deadline', 'startTime', 'endTime',
-            'minAmount', 'maxAmount', 'fee', 'feePercent', 'treasury', 'rewardRate', 'lastUpdateTime'
-        ]
-
-        # Mapping variables that should be converted to mappers (not getters)
-        # Includes both single and nested mapping names
-        mapping_vars = [
-            'balanceOf', 'allowance', 'voters', 'proposals', 'nfts', 'offersForNFT',
-            'balances', 'approved', 'isApprovedForAll', 'tokenOwner', 'tokenApprovals',
-            'operatorApprovals', 'stakes', 'rewards', 'userInfo', 'poolInfo'
-        ]
-
         def convert_var(match):
             var = match.group(1)
             if var in exclude_patterns:
                 return var
-            elif var in storage_vars:
+            elif var in self._storage_var_names:
                 return f'self.{camel_to_snake(var)}().get()'
-            elif var in mapping_vars:
+            elif var in self._mapping_var_names:
                 return f'self.{camel_to_snake(var)}()'
             else:
                 return var
@@ -1092,8 +1133,11 @@ class Transpiler:
         """Extract storage variables, including mappings (single and nested)"""
         vars: list[tuple[str, str, str]] = []
 
+        # Strip struct/function/modifier bodies so their fields are not captured as storage vars
+        content_no_bodies = re.sub(r'\bstruct\s+\w+\s*\{[^}]*\}', '', content, flags=re.DOTALL)
+
         # Simple variables (uint256, address, etc.)
-        for match in re.finditer(r"(uint256|uint128|uint64|uint32|uint16|uint8|int256|int128|int64|int32|int16|int8|string|address|bool|u8)(?:\s+(?:public|private|internal|external))?\s+(\w+)\s*;", content):
+        for match in re.finditer(r"(uint256|uint128|uint64|uint32|uint16|uint8|int256|int128|int64|int32|int16|int8|string|address|bool|u8)(?:\s+(?:public|private|internal|external))?\s+(\w+)\s*;", content_no_bodies):
             vars.append((match.group(1), match.group(2), ""))
 
         # Nested mappings: mapping(type1 => mapping(type2 => type3))
@@ -1158,6 +1202,17 @@ class Transpiler:
         modifiers = self.parse_modifiers(solidity_content)
         functions = self.parse_functions(solidity_content)
         storage = self._extract_storage(solidity_content)
+
+        # Build lookup sets used by _convert_expression and _convert_statement
+        self._storage_var_names = {
+            var_name for var_type, var_name, _ in storage
+            if var_type not in ("mapping", "nested_mapping")
+        }
+        self._mapping_var_names = {
+            var_name: (2 if var_type == "nested_mapping" else 1)
+            for var_type, var_name, _ in storage
+            if var_type in ("mapping", "nested_mapping")
+        }
 
         lines: list[str] = []
         lines.append("#![no_std]\n")

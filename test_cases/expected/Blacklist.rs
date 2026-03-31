@@ -21,15 +21,15 @@ pub trait Blacklist {
 
     #[init]
     fn init(&self) {
-        owner = self.blockchain().get_caller();
-        blacklistCount = BigUint::from(0u32);
+        self.owner().set(&(self.blockchain().get_caller()));
+        self.blacklist_count().set(&(BigUint::from(0u32)));
     }
 
     #[endpoint]
     fn add_to_blacklist(&self, account: ManagedAddress<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
         require!(!self.blacklisted(&account), "Already blacklisted");
-        blacklistCount = blacklistCount + BigUint::from(1u32);
+        self.blacklist_count().set(&(self.blacklist_count().get() + BigUint::from(1u32)));
         self.blacklisted_event(&account);
     }
 
@@ -37,7 +37,7 @@ pub trait Blacklist {
     fn remove_from_blacklist(&self, account: ManagedAddress<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
         require!(self.blacklisted(&account), "Not blacklisted");
-        blacklistCount = blacklistCount - BigUint::from(1u32);
+        self.blacklist_count().set(&(self.blacklist_count().get() - BigUint::from(1u32)));
         self.unblacklisted_event(&account);
     }
 
@@ -48,7 +48,7 @@ pub trait Blacklist {
 
     #[view(getBlacklistCount)]
     fn get_blacklist_count(&self) -> BigUint<Self::Api> {
-        return blacklistCount;
+        return self.blacklist_count().get();
     }
 
 }
