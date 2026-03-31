@@ -379,6 +379,69 @@ def test_unchecked_generates_passthrough():
     assert "result = a + b" in result or "a + b" in result
 
 
+def test_safemath_inlining():
+    """Test that SafeMath method calls (both using-for and static) are inlined to operators"""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+
+    contract SafeMathTest {
+        using SafeMath for uint256;
+        uint256 public total;
+
+        function addValues(uint256 a, uint256 b) public {
+            total = a.add(b);
+        }
+
+        function staticAdd(uint256 a, uint256 b) public {
+            total = SafeMath.add(a, b);
+        }
+
+        function subValues(uint256 a, uint256 b) public {
+            total = a.sub(b);
+        }
+
+        function mulValues(uint256 a, uint256 b) public {
+            total = a.mul(b);
+        }
+    }
+    """
+    result = Transpiler().convert(sol)
+
+    # Library method calls must be inlined — no raw SafeMath calls in output
+    assert "a.add(" not in result
+    assert "SafeMath.add(" not in result
+    assert "a.sub(" not in result
+    assert "a.mul(" not in result
+
+    # Inlined operators must appear
+    assert "a + b" in result
+    assert "a - b" in result
+    assert "a * b" in result
+
+
+def test_unknown_library_warning():
+    """Unknown using-for libraries emit a TranspilationWarning"""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+
+    contract Foo {
+        using MyCustomLib for uint256;
+        uint256 public x;
+
+        function doThing(uint256 a) public {
+            x = a.customOp();
+        }
+    }
+    """
+    transpiler = Transpiler()
+    transpiler.convert(sol)
+
+    warning_messages = [w.message for w in transpiler._warnings]
+    assert any("MyCustomLib" in msg for msg in warning_messages)
+
+
 # Count test to verify we have 50 test cases
 def test_fifty_test_cases():
     """Verify we have at least 50 test cases"""

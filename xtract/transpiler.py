@@ -30,6 +30,20 @@ class TranspilationResult:
         self.success = False
 
 
+LIBRARY_FUNCTION_MAP = {
+    # (library_name, method_name): (num_args, transform_fn)
+    # transform_fn receives a list of already-split argument strings
+    ("SafeMath", "add"): (2, lambda args: f"{args[0]} + {args[1]}"),
+    ("SafeMath", "sub"): (2, lambda args: f"{args[0]} - {args[1]}"),
+    ("SafeMath", "mul"): (2, lambda args: f"{args[0]} * {args[1]}"),
+    ("SafeMath", "div"): (2, lambda args: f"{args[0]} / {args[1]}"),
+    ("SafeMath", "mod"): (2, lambda args: f"{args[0]} % {args[1]}"),
+    ("Math",     "max"): (2, lambda args: f"std::cmp::max({args[0]}, {args[1]})"),
+    ("Math",     "min"): (2, lambda args: f"std::cmp::min({args[0]}, {args[1]})"),
+    ("Strings",  "toString"): (1, lambda args: f"/* TODO: Strings.toString({args[0]}) — use ManagedBuffer */"),
+    ("Address",  "isContract"): (1, lambda args: f"!{args[0]}.is_zero()"),
+}
+
 SOLIDITY_TO_MVX_TYPE = {
     "uint256": "BigUint<Self::Api>",
     "uint128": "BigUint<Self::Api>",
@@ -60,6 +74,8 @@ class Transpiler:
         # Populated by convert() from _extract_storage() before any expression conversion
         self._storage_var_names: set[str] = set()
         self._mapping_var_names: dict[str, int] = {}  # name → number of keys
+        self._using_for: dict[str, str] = {}   # type_name -> library_name
+        self._warnings: list[TranspilationWarning] = []
 
     def parse_contract_name(self, content: str) -> str | None:
         # Match contract definition at beginning of line (not in comments)
@@ -120,7 +136,6 @@ class Transpiler:
             (r'abi\.encodeWithSelector', "abi.encodeWithSelector has no MultiversX equivalent — stub emitted"),
             (r'abi\.decode', "abi.decode requires manual conversion — use codec::top_decode_from_managed_buffer"),
             (r'\blibrary\s+\w+', "Libraries require manual flattening"),
-            (r'\busing\s+\w+\s+for\s+', "Using-for directives require manual flattening"),
         ]
 
         for pattern, message in unsupported_patterns:
@@ -1088,8 +1103,98 @@ class Transpiler:
 
         return f'        // TODO: unhandled statement: {stmt}'
 
+    def _split_args(self, args_str: str) -> list[str]:
+        """Split comma-separated call arguments while respecting nested parentheses."""
+        args: list[str] = []
+        depth = 0
+        current: list[str] = []
+        for ch in args_str:
+            if ch in '([{':
+                depth += 1
+                current.append(ch)
+            elif ch in ')]}':
+                depth -= 1
+                current.append(ch)
+            elif ch == ',' and depth == 0:
+                s = ''.join(current).strip()
+                if s:
+                    args.append(s)
+                current = []
+            else:
+                current.append(ch)
+        s = ''.join(current).strip()
+        if s:
+            args.append(s)
+        return args
+
+    def _apply_using_for_transforms(self, expr: str) -> str:
+        """Inline known library calls (SafeMath, Math, etc.) to plain Rust expressions.
+
+        Handles two forms:
+        - Static:      SafeMath.add(a, b)  -> a + b
+        - Method-call: a.add(b) when 'using SafeMath for <type>' is active -> a + b
+        """
+        known_libs = {k[0] for k in LIBRARY_FUNCTION_MAP}
+        known_methods = {k[1] for k in LIBRARY_FUNCTION_MAP}
+        active_libraries = set(self._using_for.values())
+
+        pattern = re.compile(r'\b(\w+)\.(\w+)\s*\(')
+        parts: list[str] = []
+        pos = 0
+
+        while pos < len(expr):
+            m = pattern.search(expr, pos)
+            if not m:
+                parts.append(expr[pos:])
+                break
+
+            first = m.group(1)
+            method_name = m.group(2)
+            args_start = m.end()
+
+            # Find matching closing parenthesis
+            depth = 1
+            i = args_start
+            while i < len(expr) and depth > 0:
+                if expr[i] == '(':
+                    depth += 1
+                elif expr[i] == ')':
+                    depth -= 1
+                i += 1
+            args_str = expr[args_start:i - 1]
+
+            transformed: str | None = None
+
+            if first in known_libs:
+                # Static library call: SafeMath.add(a, b)
+                key = (first, method_name)
+                if key in LIBRARY_FUNCTION_MAP:
+                    _, fn = LIBRARY_FUNCTION_MAP[key]
+                    transformed = fn(self._split_args(args_str))
+            elif method_name in known_methods:
+                # Method-call via using-for: a.add(b)
+                for lib_name in active_libraries:
+                    key = (lib_name, method_name)
+                    if key in LIBRARY_FUNCTION_MAP:
+                        _, fn = LIBRARY_FUNCTION_MAP[key]
+                        transformed = fn([first] + self._split_args(args_str))
+                        break
+
+            if transformed is not None:
+                parts.append(expr[pos:m.start()])
+                parts.append(transformed)
+                pos = i
+            else:
+                parts.append(expr[pos:m.end()])
+                pos = m.end()
+
+        return ''.join(parts)
+
     def _convert_expression(self, expr: str) -> str:
         """Convert Solidity expressions to MultiversX equivalents"""
+        # Inline known library calls before any other transformation
+        expr = self._apply_using_for_transforms(expr)
+
         # Early dispatch for abi calls before any other transformation
         abi_result = self._convert_abi_call(expr)
         if abi_result is not None:
@@ -1336,6 +1441,26 @@ class Transpiler:
         return f"SingleValueMapper<{self._map_type(var_type)}>"
 
     def convert(self, solidity_content: str) -> str:
+        # Reset per-conversion state
+        self._using_for = {}
+        self._warnings = []
+
+        # Detect using-for directives: using LibName for TypeName
+        for m in re.finditer(r'using\s+(\w+)\s+for\s+(\w+)', solidity_content):
+            lib_name = m.group(1)
+            type_name = m.group(2)
+            self._using_for[type_name] = lib_name
+
+        # Warn about libraries not in LIBRARY_FUNCTION_MAP
+        known_lib_names = {k[0] for k in LIBRARY_FUNCTION_MAP}
+        for type_name, lib_name in self._using_for.items():
+            if lib_name not in known_lib_names:
+                self._warnings.append(
+                    TranspilationWarning(
+                        f"Library {lib_name} not recognized — method calls on {type_name} may not compile"
+                    )
+                )
+
         name = self.parse_contract_name(solidity_content) or "Contract"
         parents = self.parse_inheritance(solidity_content)
         is_abstract = self.parse_abstract_contract(solidity_content)
@@ -1447,6 +1572,7 @@ class Transpiler:
         # Perform the conversion
         try:
             result.code = self.convert(solidity_content)
+            result.warnings.extend(self._warnings)
             result.success = True
         except Exception as e:
             result.add_error(f"Transpilation failed: {str(e)}")
