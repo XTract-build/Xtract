@@ -1,10 +1,11 @@
 import * as fs from 'fs';
 import {
   ApiNetworkProvider,
-  SmartContractTransactionFactory,
+  SmartContractTransactionsFactory,
   TransactionWatcher,
   Address,
   TransactionsFactoryConfig,
+  TransactionComputer,
 } from '@multiversx/sdk-core';
 import { DeployConfig, DeployResult } from './DeployConfig';
 import { WalletProvider } from './WalletProvider';
@@ -32,17 +33,17 @@ export class ContractDeployer {
     const abiJson = JSON.parse(fs.readFileSync(config.abiPath, 'utf8'));
 
     const factoryConfig = new TransactionsFactoryConfig({ chainID: chainId });
-    const factory = new SmartContractTransactionFactory({ config: factoryConfig, abi: abiJson });
+    const factory = new SmartContractTransactionsFactory({ config: factoryConfig, abi: abiJson });
 
-    const tx = factory.createTransactionForDeploy({
-      sender: senderAddress,
+    const tx = await factory.createTransactionForDeploy(senderAddress, {
       bytecode: wasmBuffer,
       gasLimit: BigInt(config.gasLimit ?? 60_000_000),
-      initArguments: config.initArgs ?? [],
+      arguments: config.initArgs ?? [],
     });
 
     tx.nonce = BigInt(account.nonce);
-    await signer.sign(tx);
+    const computer = new TransactionComputer();
+    tx.signature = await signer.sign(computer.computeBytesForSigning(tx));
 
     const txHash = await provider.sendTransaction(tx);
     const watcher = new TransactionWatcher(provider);
@@ -73,18 +74,18 @@ export class ContractDeployer {
     const abiJson = JSON.parse(fs.readFileSync(config.abiPath, 'utf8'));
 
     const factoryConfig = new TransactionsFactoryConfig({ chainID: chainId });
-    const factory = new SmartContractTransactionFactory({ config: factoryConfig, abi: abiJson });
+    const factory = new SmartContractTransactionsFactory({ config: factoryConfig, abi: abiJson });
 
-    const tx = factory.createTransactionForUpgrade({
-      sender: senderAddress,
+    const tx = await factory.createTransactionForUpgrade(senderAddress, {
       contract: new Address(address),
       bytecode: wasmBuffer,
       gasLimit: BigInt(config.gasLimit ?? 60_000_000),
-      initArguments: config.initArgs ?? [],
+      arguments: config.initArgs ?? [],
     });
 
     tx.nonce = BigInt(account.nonce);
-    await signer.sign(tx);
+    const computer = new TransactionComputer();
+    tx.signature = await signer.sign(computer.computeBytesForSigning(tx));
 
     const txHash = await provider.sendTransaction(tx);
     const watcher = new TransactionWatcher(provider);
