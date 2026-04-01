@@ -2,17 +2,21 @@ import { getNetworkConfig, Networks } from '../deploy/NetworkConfig';
 import { WalletProvider } from '../deploy/WalletProvider';
 
 // Mock @multiversx/sdk-core so the tests don't need the actual package installed
-jest.mock('@multiversx/sdk-core', () => ({
-  UserSigner: {
-    fromPem: jest.fn((pem: string) => ({ _pem: pem, getAddress: () => 'erd1test' })),
-    fromWallet: jest.fn(() => ({ getAddress: () => 'erd1test' })),
-  },
-  ApiNetworkProvider: jest.fn(),
-  SmartContractTransactionFactory: jest.fn(),
-  TransactionWatcher: jest.fn(),
-  Address: jest.fn((addr: string) => ({ bech32: () => addr })),
-  TransactionsFactoryConfig: jest.fn(),
-}));
+jest.mock(
+  '@multiversx/sdk-core',
+  () => ({
+    UserSigner: {
+      fromPem: jest.fn((pem: string) => ({ _pem: pem, getAddress: () => 'erd1test' })),
+      fromWallet: jest.fn(() => ({ getAddress: () => 'erd1test' })),
+    },
+    ApiNetworkProvider: jest.fn(),
+    SmartContractTransactionFactory: jest.fn(),
+    TransactionWatcher: jest.fn(),
+    Address: jest.fn((addr: string) => ({ bech32: () => addr })),
+    TransactionsFactoryConfig: jest.fn(),
+  }),
+  { virtual: true }
+);
 
 // A minimal valid-looking MultiversX PEM for testing
 const TEST_PEM = `-----BEGIN PRIVATE KEY for erd1spyavw0956vq68ynyl0ckuwvy2pvnp5b5q0v43zm2tncxpgrm2sqh99de-----
