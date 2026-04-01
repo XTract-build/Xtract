@@ -1,33 +1,15 @@
 # @xtract/sdk
 
-TypeScript wrapper around the **XTract** Python transpiler — converts Solidity smart contracts to MultiversX-compatible Rust.
-
-## Prerequisites
-
-The SDK shells out to the `xtract` Python CLI. Install it before using this package:
+> **This is an internal build package.** The SDK is bundled inside [`xtract-cli`](https://www.npmjs.com/package/xtract-cli) — install that instead.
 
 ```bash
-pip install xtract
+npm install -g xtract-cli
 ```
 
-> Python 3.9+ is required. Verify with `xtract --version`.
-
-## Installation
-
-```bash
-npm install @xtract/sdk
-```
-
-## Quick Start
+Then import the SDK API directly:
 
 ```typescript
-import { XtractTranspiler } from '@xtract/sdk';
-
-const t = new XtractTranspiler();
-const result = await t.transpileCode('contract Foo { uint x; }');
-console.log(result.rustCode);
+import { XtractTranspiler, ContractDeployer } from 'xtract-cli/sdk';
 ```
 
-## Full Documentation
-
-See the [main repository README](https://github.com/kaankacar/XTract#readme) for the complete feature reference, CLI usage, and advanced options.
+See the [main repository README](https://github.com/XTract-build/Xtract#readme) for full documentation.
