@@ -17,3 +17,5 @@ export type {
 } from './types';
 export { ContractDeployer, WalletProvider, Networks, getNetworkConfig } from './deploy';
 export type { NetworkConfig, NetworkName, DeployConfig, DeployResult } from './deploy';
+export { ContractInteractor } from './interact';
+export type { CallOptions, TxResult } from './interact';
