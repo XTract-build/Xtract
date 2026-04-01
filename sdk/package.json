@@ -1,0 +1,22 @@
+{
+  "name": "@xtract/sdk",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest"
+  },
+  "peerDependencies": {
+    "@multiversx/sdk-core": ">=13.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@multiversx/sdk-core": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^18.0.0"
+  }
+}
