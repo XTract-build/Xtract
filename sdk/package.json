@@ -1,13 +1,8 @@
 {
   "name": "@xtract/sdk",
-  "version": "1.0.0",
+  "private": true,
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "readme": "README.md",
-  "files": [
-    "dist",
-    "README.md"
-  ],
   "scripts": {
     "build": "tsc",
     "test": "jest"

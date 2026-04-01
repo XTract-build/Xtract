@@ -52,6 +52,31 @@ This version introduces comprehensive Solidity support:
 
 **Test Coverage**: 100% unit test success across 50 Solidity contracts with 64 test functions.
 
+## TypeScript SDK
+
+The `xtract-cli` package bundles a full TypeScript SDK for programmatic use:
+
+```typescript
+import { XtractTranspiler, ContractDeployer } from 'xtract-cli/sdk';
+
+// Transpile Solidity to Rust
+const transpiler = new XtractTranspiler();
+const result = await transpiler.transpileCode('contract Foo { uint x; }');
+console.log(result.rustCode);
+
+// Deploy compiled contract to MultiversX
+const deployer = new ContractDeployer();
+const deployed = await deployer.deploy({
+  network: 'devnet',
+  wasmPath: './output/foo.wasm',
+  abiPath: './output/foo.abi.json',
+  walletPath: './wallet.pem',
+});
+console.log(deployed.contractAddress);
+```
+
+> **Prerequisite:** the SDK shells out to the Python transpiler — `pip install xtract` must be run first (Python 3.9+).
+
 ## Prerequisites
 
 The TypeScript SDK requires the Python transpiler to be installed:
