@@ -407,6 +407,16 @@ async function main() {
         return;
     }
 
+    // Flags-first shorthand: xtract [--flag ...] file.sol
+    // Scan for the first non-flag argument; if it ends in .sol, treat as transpile
+    if (subcommand.startsWith('-')) {
+        const hasSolFile = argv.some(a => !a.startsWith('-') && a.endsWith('.sol'));
+        if (hasSolFile) {
+            runTranspile(argv);
+            return;
+        }
+    }
+
     switch (subcommand) {
         case 'transpile':
             runTranspile(rest);
