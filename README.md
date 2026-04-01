@@ -1,4 +1,4 @@
-# XTract (v0.30.1)
+# XTract (v1.0.0)
 
 [![CI](https://github.com/XTract-build/Xtract/actions/workflows/ci.yml/badge.svg)](https://github.com/XTract-build/Xtract/actions/workflows/ci.yml)
 [![Tests](https://img.shields.io/badge/tests-100%25-success)](https://github.com/XTract-build/Xtract/actions/workflows/ci.yml)
@@ -38,9 +38,18 @@ xtract deploy ./my_contract/output/my_contract.wasm \
 
 XTract analyzes Solidity code and generates MultiversX Rust code that can be compiled and deployed on the MultiversX blockchain. It supports a comprehensive set of Solidity features including control flow, mappings, modifiers, and inheritance.
 
-## Version 0.30.1 (Beta Release)
+## v1.0.0 — What's New
 
-This version introduces comprehensive Solidity support:
+v1.0 adds the full deployment pipeline on top of v0.30's transpiler. See [docs/v1.0/CHANGELOG.md](docs/v1.0/CHANGELOG.md) for the complete change list.
+
+### New in v1.0
+- **`xtract build`** — compiles transpiled Rust to WASM via `mxpy`
+- **`xtract wallet create`** — generates a BIP39 wallet, saves as PEM
+- **`xtract deploy`** — deploys compiled WASM to devnet/testnet/mainnet
+- **`pip install xtract[deploy]`** — optional dep group for the above
+- **TypeScript SDK** — `xtract-cli/sdk` exposes `XtractTranspiler` and `ContractDeployer`
+
+### Transpiler features (from v0.30.1)
 
 ### Core Features
 - **Function body transpilation**: Converts `require()`, `emit()`, `return`, and assignments
@@ -90,54 +99,45 @@ console.log(deployed.contractAddress);
 
 > **Prerequisite:** the SDK shells out to the Python transpiler — `pip install xtract` must be run first (Python 3.9+).
 
-## Prerequisites
-
-The TypeScript SDK requires the Python transpiler to be installed:
-
-```bash
-pip install xtract
-```
-
-Or in a monorepo dev setup, ensure the repo root is on your PYTHONPATH.
-
 ## Installation
 
-### Via npm (recommended)
-
 ```bash
+# Transpile only (lightweight — just click)
+pip install xtract
+
+# Full pipeline: transpile + build wrapper + wallet + deploy
+pip install xtract[deploy]
+
+# CLI tool for npm users (includes TypeScript SDK)
 npm install -g xtract-cli
 ```
 
-### Via pip (Python)
-
+`mxpy` is required separately for the `xtract build` command:
 ```bash
-pip install xtract
+pip install mxpy
 ```
 
-### From source
+## CLI Reference
 
 ```bash
-git clone https://github.com/XTract-build/Xtract.git
-cd XTract
-pip install -e .
-```
-
-## Usage
-
-### Basic Usage
-
-```bash
-# Transpile a Solidity contract
-xtract MyContract.sol
-
-# Specify output file
+# Transpile
+xtract MyContract.sol              # → MyContract.rs
 xtract MyContract.sol output.rs
+xtract -v MyContract.sol           # verbose diagnostics
+xtract --json MyContract.sol       # JSON output
 
-# Verbose mode (show diagnostics)
-xtract -v MyContract.sol
+# Build (requires mxpy)
+xtract build ./my_contract/
 
-# Quiet mode
-xtract -q MyContract.sol
+# Wallet  (requires xtract[deploy])
+xtract wallet create
+xtract wallet create --output ./wallet.pem
+
+# Deploy  (requires xtract[deploy])
+xtract deploy ./output/my_contract.wasm \
+  --abi    ./output/my_contract.abi.json \
+  --wallet ~/.multiversx/wallet.pem \
+  --network devnet          # devnet | testnet | mainnet
 ```
 
 ### Quick Example
@@ -228,27 +228,31 @@ The `test_cases/` directory contains 50 fully working examples including:
 
 ## Documentation
 
-### Version Documentation
-- **[docs/v0.30/](docs/v0.30/)** - Complete documentation for v0.30.1
-  - [README.md](docs/v0.30/README.md) - Feature overview and examples
-  - [CHANGELOG.md](docs/v0.30/CHANGELOG.md) - Full release notes
-  - [IMPLEMENTATION_REPORT.md](docs/v0.30/IMPLEMENTATION_REPORT.md) - Technical architecture
-  - [IMPLEMENTATION_SUMMARY.md](docs/v0.30/IMPLEMENTATION_SUMMARY.md) - Feature matrix
-  - [TEST_RESULTS.md](docs/v0.30/TEST_RESULTS.md) - Test coverage and results
+### Current version
+- **[docs/v1.0/README.md](docs/v1.0/README.md)** — v1.0 feature overview and full pipeline walkthrough
+- **[docs/v1.0/CHANGELOG.md](docs/v1.0/CHANGELOG.md)** — what changed from v0.30 to v1.0
+- **[docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md)** — CLI reference, Python API, TypeScript SDK, type mapping
 
-### Developer Guide
-- **[docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md)** - Getting started guide
+### Previous versions
+- **[docs/v0.30/](docs/v0.30/)** — v0.30.1 release notes, implementation report, test results
+- **[docs/v0.25/](docs/v0.25/)** — v0.25 release notes
 
 ## Repository Structure
 
 ```
 XTract/
-  xtract/            # Python package (CLI + core transpiler)
-  tests/             # Unit tests (64 test functions)
+  xtract/            # Python package
+    transpiler.py    #   Solidity parser and Rust emitter
+    cli.py           #   CLI entry point (transpile / build / wallet / deploy)
+    build.py         #   mxpy contract build wrapper
+    wallet.py        #   BIP39 wallet generation
+    deploy.py        #   Contract deployment via multiversx-sdk
+  sdk/               # TypeScript SDK (bundled into xtract-cli npm package)
+  tests/             # Python unit tests (64 test functions)
   test_cases/        # Solidity inputs and expected Rust outputs (50 contracts)
-docs/              # Documentation
+  docs/              # Documentation
   .github/workflows/ # CI configuration
-  package.json       # npm package configuration
+  package.json       # xtract-cli npm package
   pyproject.toml     # Python packaging config
 ```
 
@@ -258,26 +262,27 @@ XTract follows a clear pipeline from Solidity source code to MultiversX Rust:
 
 ```
 Solidity Source (.sol)
-        ↓
+        ↓  xtract MyContract.sol
 ┌─────────────────────┐
-│  Validation &       │
-│  Diagnostics        │
+│  Transpiler         │
+│  (parse + emit)     │
 └──────────┬──────────┘
            ↓
+   Rust Source (.rs)
+        ↓  xtract build ./my_contract/
 ┌─────────────────────┐
-│  Parse Contract     │
-│  - Name & Inheritance│
-│  - Modifiers        │
-│  - Storage & Events │
-│  - Functions        │
+│  mxpy contract      │
+│  build              │
 └──────────┬──────────┘
            ↓
+   WASM + ABI
+        ↓  xtract deploy ...
 ┌─────────────────────┐
-│  Convert to         │
-│  MultiversX Rust    │
+│  multiversx-sdk     │
+│  (sign + broadcast) │
 └──────────┬──────────┘
            ↓
-   Rust Output (.rs)
+  Live contract on MultiversX
 ```
 
 ## Testing
