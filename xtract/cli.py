@@ -14,7 +14,8 @@ from .transpiler import transpile, transpile_with_diagnostics, Transpiler
 
 class _XtractGroup(click.Group):
     def parse_args(self, ctx, args):
-        if args and not args[0].startswith("-") and args[0] not in self.commands:
+        first_non_flag = next((a for a in args if not a.startswith("-")), None)
+        if first_non_flag is not None and first_non_flag not in self.commands:
             args.insert(0, "transpile")
         return super().parse_args(ctx, args)
 
