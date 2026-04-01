@@ -39,6 +39,7 @@ pub trait Ticket {
     #[endpoint]
     fn buy_ticket(&self, quantity: BigUint<Self::Api>) {
         require!(self.sold_tickets().get() + quantity <= self.total_tickets().get(), "Not enough tickets");
+        self.ticket_balance(&self.blockchain().get_caller()).set(self.ticket_balance(&self.blockchain().get_caller()) + quantity);
         self.sold_tickets().set(&(self.sold_tickets().get() + quantity));
         self.ticket_purchased_event(&self.blockchain().get_caller(), &quantity);
     }
@@ -46,12 +47,15 @@ pub trait Ticket {
     #[endpoint]
     fn transfer_ticket(&self, to: ManagedAddress<Self::Api>, quantity: BigUint<Self::Api>) {
         require!(self.ticket_balance(&self.blockchain().get_caller()) >= quantity, "Insufficient tickets");
+        self.ticket_balance(&self.blockchain().get_caller()).set(self.ticket_balance(&self.blockchain().get_caller()) - quantity);
+        self.ticket_balance(&to).set(self.ticket_balance(&to) + quantity);
         self.ticket_transferred_event(&self.blockchain().get_caller(), &to, &quantity);
     }
 
     #[endpoint]
     fn use_ticket(&self, quantity: BigUint<Self::Api>) {
         require!(self.ticket_balance(&self.blockchain().get_caller()) >= quantity, "Insufficient tickets");
+        self.ticket_balance(&self.blockchain().get_caller()).set(self.ticket_balance(&self.blockchain().get_caller()) - quantity);
         self.ticket_used_event(&self.blockchain().get_caller(), &quantity);
     }
 

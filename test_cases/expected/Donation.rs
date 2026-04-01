@@ -35,6 +35,7 @@ pub trait Donation {
     #[endpoint]
     fn donate(&self, amount: BigUint<Self::Api>) {
         require!(amount > BigUint::from(0u32), "Invalid amount");
+        self.donations(&self.blockchain().get_caller()).set(self.donations(&self.blockchain().get_caller()) + amount.clone());
         self.total_donations().set(&(self.total_donations().get() + amount.clone()));
         self.donation_received_event(&self.blockchain().get_caller(), &amount.clone());
     }

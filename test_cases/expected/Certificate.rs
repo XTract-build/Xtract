@@ -39,6 +39,9 @@ pub trait Certificate {
         require!(self.blockchain().get_caller() == self.issuer().get(), "Not issuer");
         require!(recipient != address(BigUint::from(0u32), "Requirement not met");
         self.certificate_count().set(&(self.certificate_count().get() + BigUint::from(1u32)));
+        self.certificate_owner(&self.certificate_count().get()).set(recipient);
+        self.certificate_valid(&self.certificate_count().get()).set(true);
+        self.owner_certificate_count(&recipient).set(self.owner_certificate_count(&recipient) + BigUint::from(1u32));
         self.certificate_issued_event(&self.certificate_count().get(), &recipient);
     }
 
@@ -46,6 +49,7 @@ pub trait Certificate {
     fn revoke_certificate(&self, certId: BigUint<Self::Api>) {
         require!(self.blockchain().get_caller() == self.issuer().get(), "Not issuer");
         require!(self.certificate_valid(&certId), "Not valid");
+        self.certificate_valid(&certId).set(false);
         self.certificate_revoked_event(&certId);
     }
 
@@ -53,6 +57,9 @@ pub trait Certificate {
     fn transfer_certificate(&self, certId: BigUint<Self::Api>, to: ManagedAddress<Self::Api>) {
         require!(self.certificate_owner(&certId) == self.blockchain().get_caller(), "Not owner");
         require!(self.certificate_valid(&certId), "Not valid");
+        self.owner_certificate_count(&self.blockchain().get_caller()).set(self.owner_certificate_count(&self.blockchain().get_caller()) - BigUint::from(1u32));
+        self.owner_certificate_count(&to).set(self.owner_certificate_count(&to) + BigUint::from(1u32));
+        self.certificate_owner(&certId).set(to);
         self.certificate_transferred_event(&certId, &self.blockchain().get_caller(), &to);
     }
 

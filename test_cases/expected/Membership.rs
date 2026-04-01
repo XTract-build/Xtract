@@ -38,6 +38,8 @@ pub trait Membership {
     #[endpoint]
     fn join(&self) {
         require!(!self.is_member(&self.blockchain().get_caller()), "Already a member");
+        self.is_member(&self.blockchain().get_caller()).set(true);
+        self.member_since(&self.blockchain().get_caller()).set(self.blockchain().get_block_timestamp());
         self.member_count().set(&(self.member_count().get() + BigUint::from(1u32)));
         self.member_joined_event(&self.blockchain().get_caller(), &self.blockchain().get_block_timestamp());
     }
@@ -45,6 +47,7 @@ pub trait Membership {
     #[endpoint]
     fn leave(&self) {
         require!(self.is_member(&self.blockchain().get_caller()), "Not a member");
+        self.is_member(&self.blockchain().get_caller()).set(false);
         self.member_count().set(&(self.member_count().get() - BigUint::from(1u32)));
         self.member_left_event(&self.blockchain().get_caller());
     }

@@ -740,9 +740,9 @@ class Transpiler:
                 })
                 continue
 
-            # Handle assignments
+            # Handle assignments (including mapping[key] = expr and name[k1][k2] = expr)
             if '=' in line:
-                if assign_match := re.match(r'(\w+(?:\s+\w+)*)\s*=\s*(.+)', line):
+                if assign_match := re.match(r'(\w+(?:\[[^\]]*\])*(?:\s+\w+)*)\s*=\s*(.+)', line):
                     left = assign_match.group(1).strip()
                     right = assign_match.group(2).strip()
                     statements.append({
@@ -872,6 +872,24 @@ class Transpiler:
                 for param in params_in_expr:
                     # Replace param with param.clone() but only as standalone, not in expressions
                     right = re.sub(rf'\b{param}\b', f'{param}.clone()', right)
+
+            # Check if this is a mapping assignment: name[key] = expr or name[k1][k2] = expr
+            nested_map_match = re.match(r'(\w+)\[(.+?)\]\[(.+?)\]\s*$', left)
+            single_map_match = re.match(r'(\w+)\[(.+?)\]\s*$', left)
+
+            if nested_map_match:
+                map_name = nested_map_match.group(1)
+                key1 = self._convert_expression(nested_map_match.group(2).strip())
+                key2 = self._convert_expression(nested_map_match.group(3).strip())
+                if map_name in self._mapping_var_names:
+                    snake_name = camel_to_snake(map_name)
+                    return f'        self.{snake_name}(&{key1}, &{key2}).set({right});'
+            elif single_map_match:
+                map_name = single_map_match.group(1)
+                key = self._convert_expression(single_map_match.group(2).strip())
+                if map_name in self._mapping_var_names:
+                    snake_name = camel_to_snake(map_name)
+                    return f'        self.{snake_name}(&{key}).set({right});'
 
             # Check if this is a storage variable assignment
             # Extract variable name (handle cases like "balance = balance - _value")

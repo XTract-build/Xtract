@@ -40,12 +40,16 @@ pub trait Vault {
     #[endpoint]
     fn deposit(&self, amount: BigUint<Self::Api>) {
         require!(amount > BigUint::from(0u32), "Invalid amount");
+        self.balances(&self.blockchain().get_caller()).set(self.balances(&self.blockchain().get_caller()) + amount.clone());
         self.deposited_event(&self.blockchain().get_caller(), &amount.clone());
     }
 
     #[endpoint]
     fn request_withdrawal(&self, amount: BigUint<Self::Api>) {
         require!(self.balances(&self.blockchain().get_caller()) >= amount, "Insufficient balance");
+        self.balances(&self.blockchain().get_caller()).set(self.balances(&self.blockchain().get_caller()) - amount.clone());
+        self.pending_withdrawals(&self.blockchain().get_caller()).set(amount);
+        self.withdrawal_time(&self.blockchain().get_caller()).set(self.blockchain().get_block_timestamp() + self.withdrawal_delay().get());
         self.withdrawal_requested_event(&self.blockchain().get_caller(), &amount.clone(), &self.withdrawal_time(&self.blockchain().get_caller()));
     }
 
@@ -54,6 +58,7 @@ pub trait Vault {
         require!(self.pending_withdrawals(&self.blockchain().get_caller()) > BigUint::from(0u32), "No pending withdrawal");
         require!(self.blockchain().get_block_timestamp() >= self.withdrawal_time(&self.blockchain().get_caller()), "Delay not passed");
         let mut amount: BigUint<Self::Api> = self.pending_withdrawals(&self.blockchain().get_caller());
+        self.pending_withdrawals(&self.blockchain().get_caller()).set(BigUint::from(0u32));
         self.withdrawal_completed_event(&self.blockchain().get_caller(), &amount.clone());
     }
 
@@ -61,6 +66,8 @@ pub trait Vault {
     fn cancel_withdrawal(&self) {
         require!(self.pending_withdrawals(&self.blockchain().get_caller()) > BigUint::from(0u32), "No pending withdrawal");
         let mut amount: BigUint<Self::Api> = self.pending_withdrawals(&self.blockchain().get_caller());
+        self.pending_withdrawals(&self.blockchain().get_caller()).set(BigUint::from(0u32));
+        self.balances(&self.blockchain().get_caller()).set(self.balances(&self.blockchain().get_caller()) + amount.clone());
         self.withdrawal_cancelled_event(&self.blockchain().get_caller());
     }
 

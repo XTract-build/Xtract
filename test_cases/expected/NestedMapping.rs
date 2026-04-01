@@ -15,6 +15,7 @@ pub trait NestedMapping {
 
     #[endpoint]
     fn approve(&self, spender: ManagedAddress<Self::Api>, amount: BigUint<Self::Api>) -> bool {
+        self.allowance(&self.blockchain().get_caller(), &spender).set(amount);
         self.approval_event(&self.blockchain().get_caller(), &spender, &amount.clone());
         return true;
     }

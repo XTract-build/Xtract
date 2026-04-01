@@ -462,6 +462,44 @@ def test_json_flag_output():
     assert result.returncode == 0
 
 
+def test_mapping_assignment_emits_set():
+    """Test that mapping write statements (mapping[key] = expr) emit .set(...)"""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+
+    contract ReservePool {
+        mapping(address => uint64) public reserves;
+
+        function deposit(address token, uint64 amount) public {
+            reserves[token] = reserves[token] + amount;
+        }
+    }
+    """
+    result = Transpiler().convert(sol)
+    assert ".set(" in result, "Expected .set() call for mapping write"
+    assert "self.reserves(" in result
+
+
+def test_nested_mapping_assignment_emits_set():
+    """Test that nested mapping writes (mapping[k1][k2] = expr) emit .set(...)"""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+
+    contract Allowances {
+        mapping(address => mapping(address => uint64)) public allowance;
+
+        function approve(address owner, address spender, uint64 amount) public {
+            allowance[owner][spender] = amount;
+        }
+    }
+    """
+    result = Transpiler().convert(sol)
+    assert ".set(" in result, "Expected .set() call for nested mapping write"
+    assert "self.allowance(" in result
+
+
 # Count test to verify we have 50 test cases
 def test_fifty_test_cases():
     """Verify we have at least 50 test cases"""

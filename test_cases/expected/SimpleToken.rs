@@ -28,12 +28,15 @@ pub trait SimpleToken {
         self.symbol().set(&"STK");
         self.decimals().set(&(BigUint::from(18u32)));
         self.total_supply().set(&(BigUint::from(1000000u32)));
+        self.balance_of(&self.blockchain().get_caller()).set(self.total_supply().get());
     }
 
     #[endpoint]
     fn transfer(&self, to: ManagedAddress<Self::Api>, value: BigUint<Self::Api>) -> bool {
         require!(self.balance_of(&self.blockchain().get_caller()) >= value, "Insufficient balance");
         require!(to != address(BigUint::from(0u32), "Requirement not met");
+        self.balance_of(&self.blockchain().get_caller()).set(self.balance_of(&self.blockchain().get_caller()) - value);
+        self.balance_of(&to).set(self.balance_of(&to) + value);
         self.transfer_event(&self.blockchain().get_caller(), &to, &value);
         return true;
     }
