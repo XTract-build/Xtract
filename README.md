@@ -121,10 +121,14 @@ pip install mxpy
 
 ```bash
 # Transpile
-xtract MyContract.sol              # → MyContract.rs
-xtract MyContract.sol output.rs
-xtract -v MyContract.sol           # verbose diagnostics
-xtract --json MyContract.sol       # JSON output
+xtract transpile MyContract.sol              # → MyContract.rs
+xtract transpile MyContract.sol -o output.rs
+xtract transpile -v MyContract.sol           # verbose diagnostics
+xtract transpile --json MyContract.sol       # JSON to stdout
+
+# Flags can be passed before the file without the 'transpile' subcommand:
+xtract --json MyContract.sol       # shorthand for 'xtract transpile --json'
+xtract -v MyContract.sol           # shorthand for 'xtract transpile -v'
 
 # Build (requires mxpy)
 xtract build ./my_contract/

@@ -359,11 +359,12 @@ Usage:
   xtract deploy --config <xtract.config.json>   Deploy a compiled contract
   xtract scaffold <name>                         Create new contract scaffolding
 
-  xtract <input.sol> [output.rs]                 Shorthand for transpile (backward compat)
+  xtract [--json] [--verbose] [--quiet] <file.sol>   # shorthand for 'xtract transpile'
 
 Transpile options:
   -v, --verbose    Show detailed diagnostics
   -q, --quiet      Suppress non-error output
+  --json           Emit JSON to stdout instead of writing .rs file
   -o <file>        Output file (transpile only)
 
 Global options:
@@ -372,6 +373,7 @@ Global options:
 
 Examples:
   xtract MyContract.sol                          # transpile (backward compat)
+  xtract --json MyContract.sol                   # shorthand with flag, no subcommand
   xtract transpile MyContract.sol -o out.rs
   xtract build ./my-contract
   xtract deploy --config xtract.config.json
