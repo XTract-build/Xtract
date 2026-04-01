@@ -10,13 +10,26 @@ An open-source tool for converting Solidity smart contracts to MultiversX-compat
 ## Quick Start
 
 ```bash
-# Install from npm
-npm install -g xtract-cli
+# Install
+pip install xtract           # transpile only
+pip install xtract[deploy]   # + wallet creation and on-chain deployment
 
-# Transpile a Solidity contract to MultiversX Rust
-xtract MyContract.sol
+# 1. Transpile Solidity → Rust
+xtract MyContract.sol        # writes MyContract.rs
 
-# That's it! Your MultiversX Rust contract is ready at MyContract.rs
+# 2. Build Rust → WASM  (requires mxpy)
+xtract build ./my_contract/
+
+# 3. Create a wallet (first time)
+xtract wallet create         # saves to ~/.multiversx/wallet.pem
+#    → prints your address and funding URLs for devnet/testnet
+
+# 4. Deploy
+xtract deploy ./my_contract/output/my_contract.wasm \
+  --abi ./my_contract/output/my_contract.abi.json \
+  --wallet ~/.multiversx/wallet.pem \
+  --network devnet
+#    → prints contract address and explorer link
 ```
 
 **npm package:** [https://www.npmjs.com/package/xtract-cli](https://www.npmjs.com/package/xtract-cli)

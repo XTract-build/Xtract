@@ -48,6 +48,9 @@ Issues = "https://github.com/XTract-build/Xtract/issues"
 dev = [
   "pytest>=7.0",
 ]
+deploy = [
+  "multiversx-sdk>=2.0.0",
+]
 
 [project.scripts]
 xtract = "xtract.cli:main"
