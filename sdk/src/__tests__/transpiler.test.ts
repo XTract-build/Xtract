@@ -1,3 +1,4 @@
+import * as childProcess from 'child_process';
 import { XtractTranspiler } from '../transpiler';
 
 const SIMPLE_SOLIDITY = `
@@ -37,5 +38,29 @@ describe('XtractTranspiler', () => {
   it('diagnostics array is present', async () => {
     const result = await transpiler.transpileCode(SIMPLE_SOLIDITY);
     expect(Array.isArray(result.diagnostics)).toBe(true);
+  });
+});
+
+describe('resolvePython() – no Python binary found', () => {
+  let spawnSyncSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    spawnSyncSpy = jest
+      .spyOn(childProcess, 'spawnSync')
+      .mockReturnValue({ status: 1, stdout: '', stderr: '', pid: 0, output: [], signal: null });
+  });
+
+  afterEach(() => {
+    spawnSyncSpy.mockRestore();
+  });
+
+  it('throws an error mentioning pip install xtract and the tried candidates', async () => {
+    const transpiler = new XtractTranspiler();
+    await expect(transpiler.transpileCode('contract Foo {}')).rejects.toThrow(
+      /pip install xtract/
+    );
+    await expect(transpiler.transpileCode('contract Foo {}')).rejects.toThrow(
+      /python3.*python|python.*python3/
+    );
   });
 });
