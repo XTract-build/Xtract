@@ -15,3 +15,5 @@ export type {
   i64,
   bool,
 } from './types';
+export { ContractDeployer, WalletProvider, Networks, getNetworkConfig } from './deploy';
+export type { NetworkConfig, NetworkName, DeployConfig, DeployResult } from './deploy';
