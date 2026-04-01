@@ -52,6 +52,16 @@ This version introduces comprehensive Solidity support:
 
 **Test Coverage**: 100% unit test success across 50 Solidity contracts with 64 test functions.
 
+## Prerequisites
+
+The TypeScript SDK requires the Python transpiler to be installed:
+
+```bash
+pip install xtract
+```
+
+Or in a monorepo dev setup, ensure the repo root is on your PYTHONPATH.
+
 ## Installation
 
 ### Via npm (recommended)

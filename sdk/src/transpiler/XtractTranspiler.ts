@@ -1,4 +1,4 @@
-import { spawn } from 'child_process';
+import { spawn, spawnSync } from 'child_process';
 import { writeFile, unlink } from 'fs/promises';
 import { existsSync } from 'fs';
 import { tmpdir } from 'os';
@@ -33,14 +33,25 @@ export class TranspileError extends Error {
   }
 }
 
+function resolvePython(): string {
+  for (const candidate of ['python3', 'python']) {
+    const result = spawnSync(candidate, ['--version'], { encoding: 'utf8' });
+    if (result.status === 0) return candidate;
+  }
+  throw new Error(
+    'Could not find a Python executable. Make sure xtract is installed: pip install xtract. Tried: python3, python'
+  );
+}
+
 function runCli(args: string[]): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   return new Promise((resolve) => {
+    const python = resolvePython();
     const xtractRoot = findXtractRoot();
     const env = { ...process.env };
     if (xtractRoot) {
       env['PYTHONPATH'] = xtractRoot + (env['PYTHONPATH'] ? `:${env['PYTHONPATH']}` : '');
     }
-    const proc = spawn('python3', ['-m', 'xtract.cli', ...args], { env });
+    const proc = spawn(python, ['-m', 'xtract.cli', ...args], { env });
     let stdout = '';
     let stderr = '';
     proc.stdout.on('data', (chunk: Buffer) => { stdout += chunk.toString(); });
