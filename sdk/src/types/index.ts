@@ -13,5 +13,3 @@ export type {
   i64,
   bool,
 } from './MultiversXTypes';
-export { Networks, getNetworkConfig } from './NetworkConfig';
-export type { NetworkConfig, NetworkName } from './NetworkConfig';
