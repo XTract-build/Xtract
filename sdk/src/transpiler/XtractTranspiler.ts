@@ -18,6 +18,10 @@ function findXtractRoot(): string | undefined {
   return undefined;
 }
 
+let resolvedPythonCache: string | null = null;
+
+export function resetPythonCache(): void { resolvedPythonCache = null; }
+
 export interface TranspileOptions {
   verbose?: boolean;
 }
@@ -34,9 +38,13 @@ export class TranspileError extends Error {
 }
 
 function resolvePython(): string {
+  if (resolvedPythonCache) return resolvedPythonCache;
   for (const candidate of ['python3', 'python']) {
     const result = spawnSync(candidate, ['--version'], { encoding: 'utf8' });
-    if (result.status === 0) return candidate;
+    if (result.status === 0) {
+      resolvedPythonCache = candidate;
+      return resolvedPythonCache;
+    }
   }
   throw new Error(
     'Could not find a Python executable. Make sure xtract is installed: pip install xtract. Tried: python3, python'

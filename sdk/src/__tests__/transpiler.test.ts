@@ -1,5 +1,5 @@
 import * as childProcess from 'child_process';
-import { XtractTranspiler } from '../transpiler';
+import { XtractTranspiler, resetPythonCache } from '../transpiler';
 
 const SIMPLE_SOLIDITY = `
 // SPDX-License-Identifier: MIT
@@ -45,6 +45,7 @@ describe('resolvePython() – no Python binary found', () => {
   let spawnSyncSpy: jest.SpyInstance;
 
   beforeEach(() => {
+    resetPythonCache();
     spawnSyncSpy = jest
       .spyOn(childProcess, 'spawnSync')
       .mockReturnValue({ status: 1, stdout: '', stderr: '', pid: 0, output: [], signal: null });
