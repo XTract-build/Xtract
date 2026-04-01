@@ -462,6 +462,19 @@ def test_json_flag_output():
     assert result.returncode == 0
 
 
+def test_contract_new_generates_stub():
+    """Test that 'new ContractType()' emits a deployment stub with TODO comment and ManagedAddress::zero()"""
+    sol = load("test_cases/solidity/ContractFactory.sol")
+    transpiler = Transpiler()
+    actual = transpiler.convert(sol)
+
+    assert "TODO: deploy Child" in actual
+    assert "ManagedAddress::zero()" in actual
+
+    warning_messages = [w.message for w in transpiler._warnings]
+    assert any("ContractDeploy" in msg for msg in warning_messages)
+
+
 # Count test to verify we have 50 test cases
 def test_fifty_test_cases():
     """Verify we have at least 50 test cases"""

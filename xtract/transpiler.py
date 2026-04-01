@@ -132,7 +132,6 @@ class Transpiler:
             (r'\.delegatecall\s*\(', "Delegatecall is not supported on MultiversX"),
             (r'\.staticcall\s*\(', "Staticcall is not supported - use view functions"),
             (r'\bselfdestruct\s*\(', "Selfdestruct is not supported on MultiversX"),
-            (r'\bnew\s+\w+\s*\(', "Contract creation with 'new' requires manual handling"),
             (r'abi\.encodeWithSelector', "abi.encodeWithSelector has no MultiversX equivalent — stub emitted"),
             (r'abi\.decode', "abi.decode requires manual conversion — use codec::top_decode_from_managed_buffer"),
             (r'\blibrary\s+\w+', "Libraries require manual flattening"),
@@ -709,6 +708,16 @@ class Transpiler:
                 continue
 
 
+            # Handle contract creation: TypeName varName = new ContractType(args)
+            if cc_match := re.match(r'(\w+)\s+(\w+)\s*=\s*new\s+(\w+)\s*\(([^)]*)\)', line):
+                statements.append({
+                    "type": "contract_creation",
+                    "var_name": cc_match.group(2).strip(),
+                    "contract_name": cc_match.group(3).strip(),
+                    "args": cc_match.group(4).strip(),
+                })
+                continue
+
             # Handle variable declarations: type name = expr
             if decl_match := re.match(r'([a-zA-Z_]\w*(?:\[\d*\])?)\s+([a-zA-Z_]\w*)\s*=\s*(.+)', line):
                 statements.append({
@@ -1101,6 +1110,19 @@ class Transpiler:
             inner_code = '\n'.join(inner_lines)
             return f'        // NOTE: unchecked arithmetic — overflow behavior differs on MultiversX\n{inner_code}'
 
+        elif stmt_type == "contract_creation":
+            deploy_name = stmt["contract_name"]
+            var_name = stmt["var_name"]
+            args = stmt["args"].strip()
+            self._warnings.append(TranspilationWarning(
+                "Contract creation with new ContractType() requires manual deployment setup — see MultiversX ContractDeploy docs"
+            ))
+            stub_lines = [f'        // TODO: deploy {deploy_name} — use ContractDeploy via self.send().contract_call(...)']
+            if args:
+                stub_lines.append(f'        // Args: {args}')
+            stub_lines.append(f'        let {var_name}: ManagedAddress<Self::Api> = ManagedAddress::zero();')
+            return '\n'.join(stub_lines)
+
         return f'        // TODO: unhandled statement: {stmt}'
 
     def _split_args(self, args_str: str) -> list[str]:
@@ -1199,6 +1221,13 @@ class Transpiler:
         abi_result = self._convert_abi_call(expr)
         if abi_result is not None:
             return abi_result
+
+        # Handle bare new ContractType(args) used as an expression (without assignment)
+        if re.match(r'new\s+\w+\s*\([^)]*\)', expr.strip()):
+            self._warnings.append(TranspilationWarning(
+                "Contract creation with new ContractType() requires manual deployment setup — see MultiversX ContractDeploy docs"
+            ))
+            return 'ManagedAddress::<Self::Api>::zero()'
 
         # Handle msg.sender
         expr = expr.replace("msg.sender", "self.blockchain().get_caller()")
