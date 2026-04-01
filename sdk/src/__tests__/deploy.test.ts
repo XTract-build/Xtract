@@ -74,7 +74,7 @@ describe('WalletProvider', () => {
 describe('Integration tests (skipped unless RUN_INTEGRATION=true)', () => {
   const runIntegration = process.env['RUN_INTEGRATION'] === 'true';
 
-  it.skipIf(!runIntegration)('deploys a contract to devnet', async () => {
+  (runIntegration ? it : it.skip)('deploys a contract to devnet', async () => {
     // Full integration test — requires a funded wallet and a compiled .wasm
     // Set RUN_INTEGRATION=true and provide XTRACT_WALLET_PEM to run
     expect(true).toBe(true);
