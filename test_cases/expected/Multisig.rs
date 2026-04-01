@@ -27,6 +27,7 @@ pub trait Multisig {
 
     #[init]
     fn init(&self) {
+        self.owners(&self.blockchain().get_caller()).set(true);
         self.required().set(&(BigUint::from(1u32)));
         self.transaction_count().set(&(BigUint::from(0u32)));
     }
@@ -35,6 +36,7 @@ pub trait Multisig {
     fn add_owner(&self, owner: ManagedAddress<Self::Api>) {
         require!(self.owners(&self.blockchain().get_caller()), "Not owner");
         require!(!self.owners(&owner), "Already owner");
+        self.owners(&owner).set(true);
         self.owner_added_event(&owner);
     }
 

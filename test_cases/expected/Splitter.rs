@@ -41,6 +41,8 @@ pub trait Splitter {
         require!(_recipient != address(BigUint::from(0u32), "Requirement not met");
         require!(_share > BigUint::from(0u32), "Invalid share");
         self.split_count().set(&(self.split_count().get() + BigUint::from(1u32)));
+        self.recipient(&self.split_count().get()).set(_recipient);
+        self.share(&self.split_count().get()).set(_share);
         self.total_shares().set(&(self.total_shares().get() + _share));
         self.recipient_added_event(&self.split_count().get(), &_recipient, &_share);
     }
@@ -50,6 +52,8 @@ pub trait Splitter {
         require!(self.blockchain().get_caller() == owner, "Not owner");
         require!(self.recipient(&index) != address(BigUint::from(0u32), "Requirement not met");
         self.total_shares().set(&(self.total_shares().get() - self.share(&index)));
+        self.recipient(&index).set(ManagedAddress::zero());
+        self.share(&index).set(BigUint::from(0u32));
         self.recipient_removed_event(&index);
     }
 

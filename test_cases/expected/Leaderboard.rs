@@ -31,11 +31,13 @@ pub trait Leaderboard {
     #[endpoint]
     fn update_score(&self, player: ManagedAddress<Self::Api>, score: BigUint<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
+        self.scores(&player).set(score);
         self.score_updated_event(&player, &score);
     }
 
     #[endpoint]
     fn submit_score(&self, score: BigUint<Self::Api>) {
+        self.scores(&self.blockchain().get_caller()).set(score);
         self.score_updated_event(&self.blockchain().get_caller(), &score);
     }
 

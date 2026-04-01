@@ -31,6 +31,7 @@ pub trait Points {
     #[endpoint]
     fn add_points(&self, user: ManagedAddress<Self::Api>, amount: BigUint<Self::Api>) {
         require!(self.blockchain().get_caller() == self.admin().get(), "Not admin");
+        self.points(&user).set(self.points(&user) + amount.clone());
         self.total_points().set(&(self.total_points().get() + amount.clone()));
         self.points_added_event(&user, &amount.clone());
     }
@@ -39,6 +40,7 @@ pub trait Points {
     fn deduct_points(&self, user: ManagedAddress<Self::Api>, amount: BigUint<Self::Api>) {
         require!(self.blockchain().get_caller() == self.admin().get(), "Not admin");
         require!(self.points(&user) >= amount, "Insufficient points");
+        self.points(&user).set(self.points(&user) - amount.clone());
         self.total_points().set(&(self.total_points().get() - amount.clone()));
         self.points_deducted_event(&user, &amount.clone());
     }
@@ -46,6 +48,8 @@ pub trait Points {
     #[endpoint]
     fn transfer_points(&self, to: ManagedAddress<Self::Api>, amount: BigUint<Self::Api>) {
         require!(self.points(&self.blockchain().get_caller()) >= amount, "Insufficient points");
+        self.points(&self.blockchain().get_caller()).set(self.points(&self.blockchain().get_caller()) - amount.clone());
+        self.points(&to).set(self.points(&to) + amount.clone());
         self.points_transferred_event(&self.blockchain().get_caller(), &to, &amount.clone());
     }
 

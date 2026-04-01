@@ -29,6 +29,7 @@ pub trait Blacklist {
     fn add_to_blacklist(&self, account: ManagedAddress<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
         require!(!self.blacklisted(&account), "Already blacklisted");
+        self.blacklisted(&account).set(true);
         self.blacklist_count().set(&(self.blacklist_count().get() + BigUint::from(1u32)));
         self.blacklisted_event(&account);
     }
@@ -37,6 +38,7 @@ pub trait Blacklist {
     fn remove_from_blacklist(&self, account: ManagedAddress<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
         require!(self.blacklisted(&account), "Not blacklisted");
+        self.blacklisted(&account).set(false);
         self.blacklist_count().set(&(self.blacklist_count().get() - BigUint::from(1u32)));
         self.unblacklisted_event(&account);
     }

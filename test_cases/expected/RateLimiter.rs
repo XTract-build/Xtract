@@ -38,12 +38,15 @@ pub trait RateLimiter {
     #[endpoint]
     fn perform_action(&self) {
         require!(self.action_count(&self.blockchain().get_caller()) < self.limit().get(), "Rate limit exceeded");
+        self.action_count(&self.blockchain().get_caller()).set(self.action_count(&self.blockchain().get_caller()) + BigUint::from(1u32));
+        self.last_action(&self.blockchain().get_caller()).set(self.blockchain().get_block_timestamp());
         self.action_performed_event(&self.blockchain().get_caller(), &self.action_count(&self.blockchain().get_caller()));
     }
 
     #[endpoint]
     fn reset_limit(&self, user: ManagedAddress<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
+        self.action_count(&user).set(BigUint::from(0u32));
     }
 
     #[endpoint]

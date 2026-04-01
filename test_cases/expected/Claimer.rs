@@ -35,6 +35,8 @@ pub trait Claimer {
     #[endpoint]
     fn claim(&self) {
         require!(!self.has_claimed(&self.blockchain().get_caller()), "Already claimed");
+        self.has_claimed(&self.blockchain().get_caller()).set(true);
+        self.claimed_at(&self.blockchain().get_caller()).set(self.blockchain().get_block_timestamp());
         self.total_claimed().set(&(self.total_claimed().get() + self.claim_amount().get()));
         self.claimed_event(&self.blockchain().get_caller(), &self.claim_amount().get(), &self.blockchain().get_block_timestamp());
     }

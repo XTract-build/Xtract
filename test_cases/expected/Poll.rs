@@ -49,6 +49,8 @@ pub trait Poll {
         require!(self.poll_active().get(), "Poll not active");
         require!(!self.has_voted(&self.blockchain().get_caller()), "Already voted");
         require!(option < self.option_count().get(), "Invalid option");
+        self.has_voted(&self.blockchain().get_caller()).set(true);
+        self.votes(&option).set(self.votes(&option) + BigUint::from(1u32));
         self.vote_cast_event(&self.blockchain().get_caller(), &option);
     }
 

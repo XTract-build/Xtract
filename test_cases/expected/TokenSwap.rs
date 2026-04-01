@@ -33,6 +33,7 @@ pub trait TokenSwap {
     fn swap(&self, amountIn: BigUint<Self::Api>) {
         require!(amountIn > BigUint::from(0u32), "Invalid amount");
         let mut amountOut: BigUint<Self::Api> = amountIn * self.rate().get() / BigUint::from(100u32);
+        self.swap_history(&self.blockchain().get_caller()).set(self.swap_history(&self.blockchain().get_caller()) + amountIn);
         self.total_swapped().set(&(self.total_swapped().get() + amountIn));
         self.swapped_event(&self.blockchain().get_caller(), &amountIn.clone(), &amountOut.clone());
     }

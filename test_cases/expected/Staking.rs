@@ -33,6 +33,7 @@ pub trait Staking {
     #[endpoint]
     fn stake(&self, amount: BigUint<Self::Api>) {
         require!(amount > BigUint::from(0u32), "Cannot stake zero");
+        self.stakes(&self.blockchain().get_caller()).set(self.stakes(&self.blockchain().get_caller()) + amount.clone());
         self.total_staked().set(&(self.total_staked().get() + amount.clone()));
         self.staked_event(&self.blockchain().get_caller(), &amount.clone());
     }
@@ -40,6 +41,7 @@ pub trait Staking {
     #[endpoint]
     fn unstake(&self, amount: BigUint<Self::Api>) {
         require!(self.stakes(&self.blockchain().get_caller()) >= amount, "Insufficient stake");
+        self.stakes(&self.blockchain().get_caller()).set(self.stakes(&self.blockchain().get_caller()) - amount.clone());
         self.total_staked().set(&(self.total_staked().get() - amount.clone()));
         self.unstaked_event(&self.blockchain().get_caller(), &amount.clone());
     }
@@ -48,6 +50,7 @@ pub trait Staking {
     fn claim_reward(&self) {
         let mut reward: BigUint<Self::Api> = self.rewards(&self.blockchain().get_caller());
         require!(reward > BigUint::from(0u32), "No reward");
+        self.rewards(&self.blockchain().get_caller()).set(BigUint::from(0u32));
         self.reward_claimed_event(&self.blockchain().get_caller(), &reward);
     }
 

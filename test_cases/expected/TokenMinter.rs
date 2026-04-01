@@ -43,12 +43,14 @@ pub trait TokenMinter {
         self.name().set(&"MintableToken");
         self.symbol().set(&"MTK");
         self.total_supply().set(&(BigUint::from(0u32)));
+        self.minters(&self.blockchain().get_caller()).set(true);
     }
 
     #[endpoint]
     fn mint(&self, to: ManagedAddress<Self::Api>, amount: BigUint<Self::Api>) {
         require!(self.minters(&self.blockchain().get_caller()), "Not minter");
         require!(to != address(BigUint::from(0u32), "Requirement not met");
+        self.balances(&to).set(self.balances(&to) + amount.clone());
         self.total_supply().set(&(self.total_supply().get() + amount.clone()));
         self.minted_event(&to, &amount.clone());
     }
@@ -56,6 +58,7 @@ pub trait TokenMinter {
     #[endpoint]
     fn burn(&self, amount: BigUint<Self::Api>) {
         require!(self.balances(&self.blockchain().get_caller()) >= amount, "Insufficient balance");
+        self.balances(&self.blockchain().get_caller()).set(self.balances(&self.blockchain().get_caller()) - amount.clone());
         self.total_supply().set(&(self.total_supply().get() - amount.clone()));
         self.burned_event(&self.blockchain().get_caller(), &amount.clone());
     }
@@ -63,12 +66,14 @@ pub trait TokenMinter {
     #[endpoint]
     fn add_minter(&self, minter: ManagedAddress<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
+        self.minters(&minter).set(true);
         self.minter_added_event(&minter);
     }
 
     #[endpoint]
     fn remove_minter(&self, minter: ManagedAddress<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
+        self.minters(&minter).set(false);
         self.minter_removed_event(&minter);
     }
 

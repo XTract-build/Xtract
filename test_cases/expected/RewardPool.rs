@@ -46,6 +46,8 @@ pub trait RewardPool {
     fn claim_reward(&self) {
         let mut reward: BigUint<Self::Api> = self.pending_rewards(&self.blockchain().get_caller());
         require!(reward > BigUint::from(0u32), "No rewards");
+        self.pending_rewards(&self.blockchain().get_caller()).set(BigUint::from(0u32));
+        self.last_update_time(&self.blockchain().get_caller()).set(self.blockchain().get_block_timestamp());
         self.reward_claimed_event(&self.blockchain().get_caller(), &reward);
     }
 

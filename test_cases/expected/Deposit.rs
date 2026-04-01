@@ -40,6 +40,7 @@ pub trait Deposit {
     fn deposit(&self, amount: BigUint<Self::Api>) {
         require!(amount >= self.min_deposit().get(), "Below minimum");
         require!(amount <= self.max_deposit().get(), "Above maximum");
+        self.user_deposits(&self.blockchain().get_caller()).set(self.user_deposits(&self.blockchain().get_caller()) + amount.clone());
         self.total_deposits().set(&(self.total_deposits().get() + amount.clone()));
         self.deposit_made_event(&self.blockchain().get_caller(), &amount.clone());
     }
@@ -47,6 +48,7 @@ pub trait Deposit {
     #[endpoint]
     fn withdraw(&self, amount: BigUint<Self::Api>) {
         require!(self.user_deposits(&self.blockchain().get_caller()) >= amount, "Insufficient balance");
+        self.user_deposits(&self.blockchain().get_caller()).set(self.user_deposits(&self.blockchain().get_caller()) - amount.clone());
         self.total_deposits().set(&(self.total_deposits().get() - amount.clone()));
         self.withdrawal_made_event(&self.blockchain().get_caller(), &amount.clone());
     }

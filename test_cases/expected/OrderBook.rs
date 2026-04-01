@@ -38,6 +38,9 @@ pub trait OrderBook {
     fn create_order(&self, amount: BigUint<Self::Api>) {
         require!(amount > BigUint::from(0u32), "Invalid amount");
         self.order_count().set(&(self.order_count().get() + BigUint::from(1u32)));
+        self.order_owner(&self.order_count().get()).set(self.blockchain().get_caller());
+        self.order_amount(&self.order_count().get()).set(amount);
+        self.order_active(&self.order_count().get()).set(true);
         self.order_created_event(&self.order_count().get(), &self.blockchain().get_caller(), &amount.clone());
     }
 
@@ -45,12 +48,14 @@ pub trait OrderBook {
     fn cancel_order(&self, orderId: BigUint<Self::Api>) {
         require!(self.order_owner(&orderId) == self.blockchain().get_caller(), "Not order owner");
         require!(self.order_active(&orderId), "Order not active");
+        self.order_active(&orderId).set(false);
         self.order_cancelled_event(&orderId);
     }
 
     #[endpoint]
     fn fill_order(&self, orderId: BigUint<Self::Api>) {
         require!(self.order_active(&orderId), "Order not active");
+        self.order_active(&orderId).set(false);
         self.order_filled_event(&orderId, &self.blockchain().get_caller());
     }
 
