@@ -10,7 +10,7 @@ jest.mock(
       fromWallet: jest.fn(() => ({ getAddress: () => 'erd1test' })),
     },
     ApiNetworkProvider: jest.fn(),
-    SmartContractTransactionFactory: jest.fn(),
+    SmartContractTransactionsFactory: jest.fn(),
     TransactionWatcher: jest.fn(),
     Address: jest.fn((addr: string) => ({ bech32: () => addr })),
     TransactionsFactoryConfig: jest.fn(),
