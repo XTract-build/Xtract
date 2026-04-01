@@ -8,6 +8,8 @@
   },
   "scripts": {
     "test": "node test/test.js",
+    "test:subcommands": "node test/test-subcommands.js",
+    "build:sdk": "cd sdk && npm run build",
     "postinstall": "node scripts/check-python.js"
   },
   "keywords": [
@@ -37,6 +39,7 @@
     "bin/",
     "lib/",
     "scripts/",
+    "sdk/dist/",
     "xtract/",
     "pyproject.toml"
   ],
