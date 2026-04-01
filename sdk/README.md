@@ -10,7 +10,7 @@ The SDK shells out to the `xtract` Python CLI. Install it before using this pack
 pip install xtract
 ```
 
-> Python 3.8+ is required. Verify with `xtract --version`.
+> Python 3.9+ is required. Verify with `xtract --version`.
 
 ## Installation
 
