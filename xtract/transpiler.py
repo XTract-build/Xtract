@@ -192,21 +192,32 @@ class Transpiler:
             params = match.group(2).strip()
             body = match.group(3).strip()
 
-            # Extract the require condition from the modifier body
-            # Common patterns: require(condition, "message"); followed by _;
-            require_match = re.search(r'require\s*\(([^,)]+)(?:,\s*["\']([^"\']+)["\'])?\s*\)', body)
+            # Split on _; to get pre and post statements
+            if "_;" in body:
+                pre_body, post_body = body.split("_;", 1)
+            else:
+                pre_body, post_body = body, ""
+
+            pre_statements = self._parse_statements(pre_body.strip())
+            post_statements = self._parse_statements(post_body.strip())
+
+            # Extract the require condition from pre_statements for backwards compat
             condition = None
             message = None
-            if require_match:
-                condition = require_match.group(1).strip()
-                message = require_match.group(2).strip() if require_match.group(2) else f"{name} check failed"
+            for stmt in pre_statements:
+                if stmt.get("type") == "require":
+                    condition = stmt["condition"]
+                    message = stmt.get("message") or f"{name} check failed"
+                    break
 
             modifiers[name] = {
                 "name": name,
                 "params": params,
                 "body": body,
                 "condition": condition,
-                "message": message
+                "message": message,
+                "pre_statements": pre_statements,
+                "post_statements": post_statements,
             }
         return modifiers
 
@@ -1354,15 +1365,29 @@ class Transpiler:
         # Parse and convert body statements
         body_lines = []
 
+        # Collect post-modifier statements to emit after the function body
+        post_modifier_lines = []
+
         # Add modifier checks at the start of the function
         if modifiers and func.get("applied_modifiers"):
             for mod_name in func["applied_modifiers"]:
                 if mod_name in modifiers:
                     mod = modifiers[mod_name]
-                    if mod.get("condition"):
+                    if mod.get("pre_statements"):
+                        for stmt in mod["pre_statements"]:
+                            converted = self._convert_statement(stmt, "")
+                            if converted:
+                                body_lines.append(converted)
+                    elif mod.get("condition"):
+                        # Fallback for modifiers parsed without pre_statements
                         converted_condition = self._convert_expression(mod["condition"])
                         message = mod.get("message", f"{mod_name} check failed")
                         body_lines.append(f'        require!({converted_condition}, "{message}");')
+                    if mod.get("post_statements"):
+                        for stmt in mod["post_statements"]:
+                            converted = self._convert_statement(stmt, "")
+                            if converted:
+                                post_modifier_lines.append(converted)
 
         if func.get("body"):
             statements = self._parse_statements(func["body"])
@@ -1370,6 +1395,8 @@ class Transpiler:
                 converted = self._convert_statement(stmt, "")
                 if converted:
                     body_lines.append(converted)
+
+        body_lines.extend(post_modifier_lines)
 
         if body_lines:
             body = '\n'.join(body_lines)
