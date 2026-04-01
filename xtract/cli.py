@@ -8,6 +8,7 @@ from .transpiler import transpile, transpile_with_diagnostics, Transpiler
 
 
 @click.command()
+@click.version_option('1.0.0', '--version', message='%(version)s')
 @click.argument("input", type=click.Path(exists=True, dir_okay=False, path_type=Path))
 @click.argument("output", required=False, type=click.Path(dir_okay=False, path_type=Path))
 @click.option("-v", "--verbose", is_flag=True, help="Show detailed diagnostics and warnings")

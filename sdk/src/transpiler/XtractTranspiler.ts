@@ -104,7 +104,7 @@ export class XtractTranspiler {
   }
 
   static async isInstalled(): Promise<boolean> {
-    const { exitCode } = await runCli(['--version']);
+    const { exitCode } = await runCli(['--help']);
     return exitCode === 0;
   }
 
