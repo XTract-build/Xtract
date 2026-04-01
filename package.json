@@ -1,15 +1,36 @@
 {
   "name": "xtract-cli",
-  "version": "0.30.1",
-  "description": "Solidity to MultiversX Rust smart contract transpiler",
+  "version": "1.0.0",
+  "description": "Solidity to MultiversX Rust transpiler with deployment SDK",
   "main": "lib/index.js",
+  "types": "lib/index.d.ts",
   "bin": {
     "xtract": "bin/xtract.js"
   },
+  "exports": {
+    ".": "./lib/index.js",
+    "./sdk": "./sdk/dist/index.js"
+  },
+  "files": [
+    "bin/",
+    "lib/",
+    "sdk/dist/",
+    "scripts/",
+    "xtract/",
+    "pyproject.toml",
+    "demo/"
+  ],
+  "peerDependencies": {
+    "@multiversx/sdk-core": ">=13.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@multiversx/sdk-core": {
+      "optional": true
+    }
+  },
   "scripts": {
     "test": "node test/test.js",
-    "test:subcommands": "node test/test-subcommands.js",
-    "build:sdk": "cd sdk && npm run build",
+    "build:sdk": "cd sdk && npm install && npm run build",
     "postinstall": "node scripts/check-python.js"
   },
   "keywords": [
@@ -33,16 +54,8 @@
   },
   "homepage": "https://github.com/XTract-build/Xtract#readme",
   "engines": {
-    "node": ">=14.0.0"
+    "node": ">=18.0.0"
   },
-  "files": [
-    "bin/",
-    "lib/",
-    "scripts/",
-    "sdk/dist/",
-    "xtract/",
-    "pyproject.toml"
-  ],
   "dependencies": {},
   "devDependencies": {}
 }

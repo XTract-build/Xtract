@@ -85,6 +85,13 @@ function main() {
         }
     }
 
+    // Check if @multiversx/sdk-core is installed
+    try {
+        require.resolve('@multiversx/sdk-core');
+    } catch (e) {
+        console.log('Tip: To use deployment features, run: npm install @multiversx/sdk-core');
+    }
+
     console.log('');
     console.log('\x1b[32m%s\x1b[0m', 'XTract is ready to use!');
     console.log('');
