@@ -1,8 +1,22 @@
 import { spawn } from 'child_process';
 import { writeFile, unlink } from 'fs/promises';
+import { existsSync } from 'fs';
 import { tmpdir } from 'os';
-import { join } from 'path';
+import { join, resolve } from 'path';
 import { Diagnostic, TranspileResult } from './TranspileResult';
+
+// Walk up from this file's directory to find the directory that contains
+// the `xtract` Python package, so the CLI works regardless of CWD.
+function findXtractRoot(): string | undefined {
+  let dir = resolve(__dirname);
+  for (let i = 0; i < 6; i++) {
+    if (existsSync(join(dir, 'xtract', '__init__.py'))) return dir;
+    const parent = resolve(dir, '..');
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return undefined;
+}
 
 export interface TranspileOptions {
   verbose?: boolean;
@@ -21,7 +35,12 @@ export class TranspileError extends Error {
 
 function runCli(args: string[]): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   return new Promise((resolve) => {
-    const proc = spawn('python', ['-m', 'xtract.cli', ...args]);
+    const xtractRoot = findXtractRoot();
+    const env = { ...process.env };
+    if (xtractRoot) {
+      env['PYTHONPATH'] = xtractRoot + (env['PYTHONPATH'] ? `:${env['PYTHONPATH']}` : '');
+    }
+    const proc = spawn('python3', ['-m', 'xtract.cli', ...args], { env });
     let stdout = '';
     let stderr = '';
     proc.stdout.on('data', (chunk: Buffer) => { stdout += chunk.toString(); });
@@ -33,7 +52,7 @@ function runCli(args: string[]): Promise<{ stdout: string; stderr: string; exitC
 }
 
 function parseOutput(stdout: string, exitCode: number, stderr: string): TranspileResult {
-  let parsed: { success?: boolean; rust_code?: string; diagnostics?: Diagnostic[] };
+  let parsed: { success?: boolean; code?: string; rust_code?: string; warnings?: Diagnostic[]; errors?: Diagnostic[]; diagnostics?: Diagnostic[] };
   try {
     parsed = JSON.parse(stdout);
   } catch {
@@ -51,10 +70,16 @@ function parseOutput(stdout: string, exitCode: number, stderr: string): Transpil
     );
   }
 
+  const diagnostics: Diagnostic[] = [
+    ...(parsed.diagnostics ?? []),
+    ...(parsed.warnings ?? []),
+    ...(parsed.errors ?? []),
+  ];
+
   return {
     success: parsed.success ?? false,
-    rustCode: parsed.rust_code ?? '',
-    diagnostics: parsed.diagnostics ?? [],
+    rustCode: parsed.code ?? parsed.rust_code ?? '',
+    diagnostics,
   };
 }
 
