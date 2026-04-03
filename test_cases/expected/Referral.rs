@@ -36,7 +36,7 @@ pub trait Referral {
         require!(referrer != self.blockchain().get_caller(), "Cannot refer self");
         require!(self.referrers(&self.blockchain().get_caller()) == address(BigUint::from(0u32), "Requirement not met");
         self.referrers(&self.blockchain().get_caller()).set(referrer);
-        self.referral_count(&referrer).set(self.referral_count(&referrer) + BigUint::from(1u32));
+        self.referral_count(&referrer).set(self.referral_count(&referrer).get() + BigUint::from(1u32));
         self.referral_registered_event(&self.blockchain().get_caller(), &referrer);
     }
 
@@ -44,7 +44,7 @@ pub trait Referral {
     fn pay_bonus(&self, referrer: ManagedAddress<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
         let mut bonus: BigUint<Self::Api> = self.referral_bonus().get();
-        self.earnings(&referrer).set(self.earnings(&referrer) + bonus);
+        self.earnings(&referrer).set(self.earnings(&referrer).get() + bonus);
         self.bonus_paid_event(&referrer, &bonus);
     }
 
@@ -56,7 +56,7 @@ pub trait Referral {
 
     #[view(getReferralCount)]
     fn get_referral_count(&self, referrer: ManagedAddress<Self::Api>) -> BigUint<Self::Api> {
-        return self.referral_count(&referrer);
+        return self.referral_count(&referrer).get();
     }
 
 }

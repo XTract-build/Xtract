@@ -50,8 +50,8 @@ pub trait Splitter {
     #[endpoint]
     fn remove_recipient(&self, index: BigUint<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
-        require!(self.recipient(&index) != address(BigUint::from(0u32), "Requirement not met");
-        self.total_shares().set(&(self.total_shares().get() - self.share(&index)));
+        require!(self.recipient(&index).get() != address(BigUint::from(0u32), "Requirement not met");
+        self.total_shares().set(&(self.total_shares().get() - self.share(&index).get()));
         self.recipient(&index).set(ManagedAddress::zero());
         self.share(&index).set(BigUint::from(0u32));
         self.recipient_removed_event(&index);
@@ -66,7 +66,7 @@ pub trait Splitter {
 
     #[view(getShare)]
     fn get_share(&self, index: BigUint<Self::Api>) -> BigUint<Self::Api> {
-        return self.share(&index);
+        return self.share(&index).get();
     }
 
 }

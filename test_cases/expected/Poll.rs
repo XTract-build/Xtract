@@ -50,7 +50,7 @@ pub trait Poll {
         require!(!self.has_voted(&self.blockchain().get_caller()), "Already voted");
         require!(option < self.option_count().get(), "Invalid option");
         self.has_voted(&self.blockchain().get_caller()).set(true);
-        self.votes(&option).set(self.votes(&option) + BigUint::from(1u32));
+        self.votes(&option).set(self.votes(&option).get() + BigUint::from(1u32));
         self.vote_cast_event(&self.blockchain().get_caller(), &option);
     }
 
@@ -64,7 +64,7 @@ pub trait Poll {
 
     #[view(getVotes)]
     fn get_votes(&self, option: BigUint<Self::Api>) -> BigUint<Self::Api> {
-        return self.votes(&option);
+        return self.votes(&option).get();
     }
 
 }

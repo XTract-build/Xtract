@@ -35,7 +35,7 @@ pub trait Multisig {
     #[endpoint]
     fn add_owner(&self, owner: ManagedAddress<Self::Api>) {
         require!(self.owners(&self.blockchain().get_caller()), "Not owner");
-        require!(!self.owners(&owner), "Already owner");
+        require!(!self.owners(&owner).get(), "Already owner");
         self.owners(&owner).set(true);
         self.owner_added_event(&owner);
     }

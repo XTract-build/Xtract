@@ -56,7 +56,7 @@ pub trait Staking {
 
     #[view(getStake)]
     fn get_stake(&self, user: ManagedAddress<Self::Api>) -> BigUint<Self::Api> {
-        return self.stakes(&user);
+        return self.stakes(&user).get();
     }
 
 }

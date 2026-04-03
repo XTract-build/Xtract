@@ -45,7 +45,7 @@ pub trait Governance {
     fn vote(&self, proposalId: BigUint<Self::Api>, support: bool) {
         require!(!self.has_voted(&self.blockchain().get_caller()), "Already voted");
         self.has_voted(&self.blockchain().get_caller()).set(true);
-        self.proposal_votes(&proposalId).set(self.proposal_votes(&proposalId.clone()) + BigUint::from(1u32));
+        self.proposal_votes(&proposalId).set(self.proposal_votes(&proposalId.clone()).get() + BigUint::from(1u32));
         self.voted_event(&proposalId.clone(), &self.blockchain().get_caller(), &support);
     }
 
@@ -57,7 +57,7 @@ pub trait Governance {
 
     #[view(getVotes)]
     fn get_votes(&self, proposalId: BigUint<Self::Api>) -> BigUint<Self::Api> {
-        return self.proposal_votes(&proposalId);
+        return self.proposal_votes(&proposalId).get();
     }
 
 }

@@ -38,7 +38,7 @@ pub trait TokenBridge {
     #[endpoint]
     fn initiate_bridge(&self, amount: BigUint<Self::Api>, nonce: BigUint<Self::Api>) {
         require!(amount > self.bridge_fee().get(), "Amount too small");
-        require!(!self.processed_nonces(&nonce), "Nonce already used");
+        require!(!self.processed_nonces(&nonce).get(), "Nonce already used");
         self.processed_nonces(&nonce).set(true);
         self.bridged_amount(&self.blockchain().get_caller()).set(self.bridged_amount(&self.blockchain().get_caller()) + amount.clone());
         self.total_bridged().set(&(self.total_bridged().get() + amount.clone()));
@@ -60,7 +60,7 @@ pub trait TokenBridge {
 
     #[view(getBridgedAmount)]
     fn get_bridged_amount(&self, user: ManagedAddress<Self::Api>) -> BigUint<Self::Api> {
-        return self.bridged_amount(&user);
+        return self.bridged_amount(&user).get();
     }
 
 }

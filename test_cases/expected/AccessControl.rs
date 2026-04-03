@@ -39,7 +39,7 @@ pub trait AccessControl {
     #[endpoint]
     fn add_operator(&self, operator: ManagedAddress<Self::Api>) {
         require!(self.blockchain().get_caller() == self.admin().get(), "Not admin");
-        require!(!self.operators(&operator), "Already operator");
+        require!(!self.operators(&operator).get(), "Already operator");
         self.operators(&operator).set(true);
         self.operator_count().set(&(self.operator_count().get() + BigUint::from(1u32)));
         self.operator_added_event(&operator);
@@ -48,7 +48,7 @@ pub trait AccessControl {
     #[endpoint]
     fn remove_operator(&self, operator: ManagedAddress<Self::Api>) {
         require!(self.blockchain().get_caller() == self.admin().get(), "Not admin");
-        require!(self.operators(&operator), "Not operator");
+        require!(self.operators(&operator).get(), "Not operator");
         self.operators(&operator).set(false);
         self.operator_count().set(&(self.operator_count().get() - BigUint::from(1u32)));
         self.operator_removed_event(&operator);
@@ -56,7 +56,7 @@ pub trait AccessControl {
 
     #[view(isOperator)]
     fn is_operator(&self, account: ManagedAddress<Self::Api>) -> bool {
-        return self.operators(&account);
+        return self.operators(&account).get();
     }
 
 }

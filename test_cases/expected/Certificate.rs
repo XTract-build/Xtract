@@ -41,31 +41,31 @@ pub trait Certificate {
         self.certificate_count().set(&(self.certificate_count().get() + BigUint::from(1u32)));
         self.certificate_owner(&self.certificate_count().get()).set(recipient);
         self.certificate_valid(&self.certificate_count().get()).set(true);
-        self.owner_certificate_count(&recipient).set(self.owner_certificate_count(&recipient) + BigUint::from(1u32));
+        self.owner_certificate_count(&recipient).set(self.owner_certificate_count(&recipient).get() + BigUint::from(1u32));
         self.certificate_issued_event(&self.certificate_count().get(), &recipient);
     }
 
     #[endpoint]
     fn revoke_certificate(&self, certId: BigUint<Self::Api>) {
         require!(self.blockchain().get_caller() == self.issuer().get(), "Not issuer");
-        require!(self.certificate_valid(&certId), "Not valid");
+        require!(self.certificate_valid(&certId).get(), "Not valid");
         self.certificate_valid(&certId).set(false);
         self.certificate_revoked_event(&certId);
     }
 
     #[endpoint]
     fn transfer_certificate(&self, certId: BigUint<Self::Api>, to: ManagedAddress<Self::Api>) {
-        require!(self.certificate_owner(&certId) == self.blockchain().get_caller(), "Not owner");
-        require!(self.certificate_valid(&certId), "Not valid");
+        require!(self.certificate_owner(&certId).get() == self.blockchain().get_caller(), "Not owner");
+        require!(self.certificate_valid(&certId).get(), "Not valid");
         self.owner_certificate_count(&self.blockchain().get_caller()).set(self.owner_certificate_count(&self.blockchain().get_caller()) - BigUint::from(1u32));
-        self.owner_certificate_count(&to).set(self.owner_certificate_count(&to) + BigUint::from(1u32));
+        self.owner_certificate_count(&to).set(self.owner_certificate_count(&to).get() + BigUint::from(1u32));
         self.certificate_owner(&certId).set(to);
         self.certificate_transferred_event(&certId, &self.blockchain().get_caller(), &to);
     }
 
     #[view(isValid)]
     fn is_valid(&self, certId: BigUint<Self::Api>) -> bool {
-        return self.certificate_valid(&certId);
+        return self.certificate_valid(&certId).get();
     }
 
 }

@@ -51,7 +51,7 @@ pub trait Leaderboard {
 
     #[view(getScore)]
     fn get_score(&self, player: ManagedAddress<Self::Api>) -> BigUint<Self::Api> {
-        return self.scores(&player);
+        return self.scores(&player).get();
     }
 
     #[view(getLeader)]

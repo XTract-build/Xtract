@@ -56,7 +56,7 @@ pub trait Subscription {
 
     #[view(checkSubscription)]
     fn check_subscription(&self, user: ManagedAddress<Self::Api>) -> bool {
-        return self.is_subscribed(&user);
+        return self.is_subscribed(&user).get();
     }
 
 }

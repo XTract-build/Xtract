@@ -36,14 +36,14 @@ pub trait SimpleToken {
         require!(self.balance_of(&self.blockchain().get_caller()) >= value, "Insufficient balance");
         require!(to != address(BigUint::from(0u32), "Requirement not met");
         self.balance_of(&self.blockchain().get_caller()).set(self.balance_of(&self.blockchain().get_caller()) - value);
-        self.balance_of(&to).set(self.balance_of(&to) + value);
+        self.balance_of(&to).set(self.balance_of(&to).get() + value);
         self.transfer_event(&self.blockchain().get_caller(), &to, &value);
         return true;
     }
 
     #[view(getBalance)]
     fn get_balance(&self, account: ManagedAddress<Self::Api>) -> BigUint<Self::Api> {
-        return self.balance_of(&account);
+        return self.balance_of(&account).get();
     }
 
 }

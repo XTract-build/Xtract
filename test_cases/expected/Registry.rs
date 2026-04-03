@@ -38,7 +38,7 @@ pub trait Registry {
 
     #[view(lookup)]
     fn lookup(&self, memory: ManagedBuffer<Self::Api>) -> ManagedAddress<Self::Api> {
-        return self.registry(&name);
+        return self.registry(&name).get();
     }
 
 }

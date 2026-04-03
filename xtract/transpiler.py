@@ -1385,6 +1385,25 @@ class Transpiler:
         # Handle nested mapper access like allowance(&_from)[...] -> allowance(&_from, &...)
         expr = re.sub(r'self\.(\w+)\(([^)]+)\)\[([^\]]+)\]', r'self.\1(\2, &\3)', expr)
 
+        # Post-pass: append .get() to storage mapper calls not already chained with a method.
+        # Scoped to known storage/mapping names so non-storage calls like self.blockchain()
+        # or self.send() are never affected.
+        storage_names = self._storage_var_names | set(self._mapping_var_names.keys())
+        if storage_names:
+            snake_names = {camel_to_snake(n) for n in storage_names}
+            # Sort longest-first to prevent partial-name matches (e.g. "foo" matching inside "foobar")
+            name_pat = '|'.join(re.escape(n) for n in sorted(snake_names, key=len, reverse=True))
+            expr = re.sub(
+                r'\b(self\.(?:' + name_pat + r')\([^)]*\))(?!\s*\.)',
+                r'\1.get()',
+                expr,
+            )
+        else:
+            # Fallback when storage names are not yet populated.
+            # WARNING: this heuristic may incorrectly append .get() to non-storage
+            # self.x() calls (e.g. self.blockchain() standing alone).
+            expr = re.sub(r'(self\.\w+\([^)]*\))(?!\s*\.)', r'\1.get()', expr)
+
         return expr
 
     def _convert_struct_initialization(self, struct_data: str) -> str:

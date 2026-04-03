@@ -65,7 +65,7 @@ pub trait RateLimiter {
 
     #[view(getActionCount)]
     fn get_action_count(&self, user: ManagedAddress<Self::Api>) -> BigUint<Self::Api> {
-        return self.action_count(&user);
+        return self.action_count(&user).get();
     }
 
 }

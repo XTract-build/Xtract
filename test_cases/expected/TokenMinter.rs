@@ -50,7 +50,7 @@ pub trait TokenMinter {
     fn mint(&self, to: ManagedAddress<Self::Api>, amount: BigUint<Self::Api>) {
         require!(self.minters(&self.blockchain().get_caller()), "Not minter");
         require!(to != address(BigUint::from(0u32), "Requirement not met");
-        self.balances(&to).set(self.balances(&to) + amount.clone());
+        self.balances(&to).set(self.balances(&to).get() + amount.clone());
         self.total_supply().set(&(self.total_supply().get() + amount.clone()));
         self.minted_event(&to, &amount.clone());
     }
@@ -79,7 +79,7 @@ pub trait TokenMinter {
 
     #[view(balanceOf)]
     fn balance_of(&self, account: ManagedAddress<Self::Api>) -> BigUint<Self::Api> {
-        return self.balances(&account);
+        return self.balances(&account).get();
     }
 
 }

@@ -513,6 +513,41 @@ def test_nested_mapping_assignment_emits_set():
     assert "self.allowance(" in result
 
 
+def test_blockchain_caller_no_extra_get():
+    """self.blockchain().get_caller() must not become self.blockchain().get().get_caller()"""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+
+    contract CallerTest {
+        function getCaller() public view returns (address) {
+            return msg.sender;
+        }
+    }
+    """
+    result = Transpiler().convert(sol)
+    assert "self.blockchain().get_caller()" in result
+    assert "self.blockchain().get()" not in result
+
+
+def test_storage_mapper_gets_get_in_expression():
+    """A storage mapper (SingleValueMapper) used in a read expression must have .get() appended"""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+
+    contract AdminTest {
+        address public admin;
+
+        function getAdmin() public view returns (address) {
+            return admin;
+        }
+    }
+    """
+    result = Transpiler().convert(sol)
+    assert "self.admin().get()" in result
+
+
 # Count test to verify we have 50 test cases
 def test_fifty_test_cases():
     """Verify we have at least 50 test cases"""

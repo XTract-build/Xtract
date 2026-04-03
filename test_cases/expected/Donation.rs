@@ -58,7 +58,7 @@ pub trait Donation {
 
     #[view(getDonation)]
     fn get_donation(&self, donor: ManagedAddress<Self::Api>) -> BigUint<Self::Api> {
-        return self.donations(&donor);
+        return self.donations(&donor).get();
     }
 
 }

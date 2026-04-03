@@ -22,7 +22,7 @@ pub trait NestedMapping {
 
     #[view(getAllowance)]
     fn get_allowance(&self, owner: ManagedAddress<Self::Api>, spender: ManagedAddress<Self::Api>) -> BigUint<Self::Api> {
-        return self.allowance(&owner, &spender);
+        return self.allowance(&owner, &spender).get();
     }
 
 }

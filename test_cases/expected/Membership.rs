@@ -61,7 +61,7 @@ pub trait Membership {
 
     #[view(checkMembership)]
     fn check_membership(&self, account: ManagedAddress<Self::Api>) -> bool {
-        return self.is_member(&account);
+        return self.is_member(&account).get();
     }
 
 }

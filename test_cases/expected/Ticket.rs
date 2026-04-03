@@ -48,7 +48,7 @@ pub trait Ticket {
     fn transfer_ticket(&self, to: ManagedAddress<Self::Api>, quantity: BigUint<Self::Api>) {
         require!(self.ticket_balance(&self.blockchain().get_caller()) >= quantity, "Insufficient tickets");
         self.ticket_balance(&self.blockchain().get_caller()).set(self.ticket_balance(&self.blockchain().get_caller()) - quantity);
-        self.ticket_balance(&to).set(self.ticket_balance(&to) + quantity);
+        self.ticket_balance(&to).set(self.ticket_balance(&to).get() + quantity);
         self.ticket_transferred_event(&self.blockchain().get_caller(), &to, &quantity);
     }
 
@@ -61,7 +61,7 @@ pub trait Ticket {
 
     #[view(getBalance)]
     fn get_balance(&self, holder: ManagedAddress<Self::Api>) -> BigUint<Self::Api> {
-        return self.ticket_balance(&holder);
+        return self.ticket_balance(&holder).get();
     }
 
 }

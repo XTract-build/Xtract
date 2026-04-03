@@ -50,7 +50,7 @@ pub trait Claimer {
 
     #[view(checkClaimed)]
     fn check_claimed(&self, user: ManagedAddress<Self::Api>) -> bool {
-        return self.has_claimed(&user);
+        return self.has_claimed(&user).get();
     }
 
     #[view(getTotalClaimed)]

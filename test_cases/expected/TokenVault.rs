@@ -37,7 +37,7 @@ pub trait TokenVault {
 
     #[view(getBalance)]
     fn get_balance(&self, user: ManagedAddress<Self::Api>) -> BigUint<Self::Api> {
-        return self.balances(&user);
+        return self.balances(&user).get();
     }
 
 }

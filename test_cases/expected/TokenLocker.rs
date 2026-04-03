@@ -44,12 +44,12 @@ pub trait TokenLocker {
 
     #[view(getLockedAmount)]
     fn get_locked_amount(&self, user: ManagedAddress<Self::Api>) -> BigUint<Self::Api> {
-        return self.locked_amount(&user);
+        return self.locked_amount(&user).get();
     }
 
     #[view(getLockExpiry)]
     fn get_lock_expiry(&self, user: ManagedAddress<Self::Api>) -> BigUint<Self::Api> {
-        return self.lock_expiry(&user);
+        return self.lock_expiry(&user).get();
     }
 
 }

@@ -53,17 +53,17 @@ pub trait Config {
 
     #[view(getUint)]
     fn get_uint(&self, memory: ManagedBuffer<Self::Api>) -> BigUint<Self::Api> {
-        return self.uint_config(&key);
+        return self.uint_config(&key).get();
     }
 
     #[view(getBool)]
     fn get_bool(&self, memory: ManagedBuffer<Self::Api>) -> bool {
-        return self.bool_config(&key);
+        return self.bool_config(&key).get();
     }
 
     #[view(getAddress)]
     fn get_address(&self, memory: ManagedBuffer<Self::Api>) -> ManagedAddress<Self::Api> {
-        return self.address_config(&key);
+        return self.address_config(&key).get();
     }
 
 }

@@ -60,7 +60,7 @@ pub trait RewardPool {
 
     #[view(getPendingReward)]
     fn get_pending_reward(&self, user: ManagedAddress<Self::Api>) -> BigUint<Self::Api> {
-        return self.pending_rewards(&user);
+        return self.pending_rewards(&user).get();
     }
 
 }

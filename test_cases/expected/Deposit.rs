@@ -64,7 +64,7 @@ pub trait Deposit {
 
     #[view(getDeposit)]
     fn get_deposit(&self, user: ManagedAddress<Self::Api>) -> BigUint<Self::Api> {
-        return self.user_deposits(&user);
+        return self.user_deposits(&user).get();
     }
 
 }

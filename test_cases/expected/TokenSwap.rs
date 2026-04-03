@@ -48,7 +48,7 @@ pub trait TokenSwap {
 
     #[view(getSwapHistory)]
     fn get_swap_history(&self, user: ManagedAddress<Self::Api>) -> BigUint<Self::Api> {
-        return self.swap_history(&user);
+        return self.swap_history(&user).get();
     }
 
 }

@@ -45,24 +45,24 @@ pub trait Badge {
     #[endpoint]
     fn award_badge(&self, user: ManagedAddress<Self::Api>, badgeId: BigUint<Self::Api>) {
         require!(self.blockchain().get_caller() == self.admin().get(), "Not admin");
-        require!(!self.has_badge(&user, &badgeId), "Already has badge");
+        require!(!self.has_badge(&user, &badgeId).get(), "Already has badge");
         self.has_badge(&user, &badgeId).set(true);
-        self.badge_count_per_user(&user).set(self.badge_count_per_user(&user) + BigUint::from(1u32));
+        self.badge_count_per_user(&user).set(self.badge_count_per_user(&user).get() + BigUint::from(1u32));
         self.badge_awarded_event(&user, &badgeId);
     }
 
     #[endpoint]
     fn revoke_badge(&self, user: ManagedAddress<Self::Api>, badgeId: BigUint<Self::Api>) {
         require!(self.blockchain().get_caller() == self.admin().get(), "Not admin");
-        require!(self.has_badge(&user, &badgeId), "Does not have badge");
+        require!(self.has_badge(&user, &badgeId).get(), "Does not have badge");
         self.has_badge(&user, &badgeId).set(false);
-        self.badge_count_per_user(&user).set(self.badge_count_per_user(&user) - BigUint::from(1u32));
+        self.badge_count_per_user(&user).set(self.badge_count_per_user(&user).get() - BigUint::from(1u32));
         self.badge_revoked_event(&user, &badgeId);
     }
 
     #[view(checkBadge)]
     fn check_badge(&self, user: ManagedAddress<Self::Api>, badgeId: BigUint<Self::Api>) -> bool {
-        return self.has_badge(&user, &badgeId);
+        return self.has_badge(&user, &badgeId).get();
     }
 
 }
