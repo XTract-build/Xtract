@@ -249,6 +249,50 @@ console.log('\nTest: xtract --json file with spaces in path routes to transpile'
     fs.rmSync(tmpDir, { recursive: true, force: true });
 }
 
+// ─── multi-flag routing: --verbose --json file.sol ───────────────────────────
+
+console.log('\nTest: xtract --verbose --json file.sol routes to transpile');
+{
+    const repoRoot = path.resolve(__dirname, '..');
+    const relPath = path.relative(repoRoot, path.join(repoRoot, 'test_cases', 'solidity', 'SimpleStorage.sol'));
+
+    const result = run(['--verbose', '--json', relPath], { cwd: repoRoot });
+
+    assert(
+        !result.stderr.includes('Unknown subcommand'),
+        '--verbose --json file.sol does not hit unknown-subcommand error (routes to transpile)'
+    );
+
+    const hasPython = spawnSync('python3', ['-m', 'xtract.cli', '--help'], { encoding: 'utf-8' }).status === 0;
+    if (!hasPython) {
+        console.log('  SKIP: --verbose --json exit-code assertion (xtract not installed)');
+    } else {
+        assert(result.status !== 1, '--verbose --json file.sol does not exit 1 due to routing failure');
+    }
+}
+
+// ─── multi-flag routing: --quiet --json file.sol ─────────────────────────────
+
+console.log('\nTest: xtract --quiet --json file.sol routes to transpile');
+{
+    const repoRoot = path.resolve(__dirname, '..');
+    const relPath = path.relative(repoRoot, path.join(repoRoot, 'test_cases', 'solidity', 'SimpleStorage.sol'));
+
+    const result = run(['--quiet', '--json', relPath], { cwd: repoRoot });
+
+    assert(
+        !result.stderr.includes('Unknown subcommand'),
+        '--quiet --json file.sol does not hit unknown-subcommand error (routes to transpile)'
+    );
+
+    const hasPython = spawnSync('python3', ['-m', 'xtract.cli', '--help'], { encoding: 'utf-8' }).status === 0;
+    if (!hasPython) {
+        console.log('  SKIP: --quiet --json exit-code assertion (xtract not installed)');
+    } else {
+        assert(result.status !== 1, '--quiet --json file.sol does not exit 1 due to routing failure');
+    }
+}
+
 // ─── summary ─────────────────────────────────────────────────────────────────
 
 console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed`);
