@@ -113,18 +113,17 @@ modifier nonReentrant() {
 }
 ```
 
-Currently expanded to the guard require at the top of each endpoint:
+The full modifier body is inlined — pre- and post-`_;` statements are both emitted:
 
 ```rust
 #[endpoint]
 fn deposit(&self, token: ManagedAddress<Self::Api>, amount: BigUint<Self::Api>) {
     require!(!self.locked().get(), "Reentrant call");
-    // …
+    self.locked().set(true);
+    // … endpoint body …
+    self.locked().set(false);
 }
 ```
-
-The `locked = true / false` wrapper statements are added manually today;
-full modifier body inlining is tracked as a future improvement.
 
 #### Local variable declaration (A1)
 
@@ -157,14 +156,9 @@ fn get_price(&self,
 
 ### What still requires a manual pass
 
-| Gap | Workaround |
-|---|---|
-| Mapping reads in expressions: `self.reserves(&t)` needs `.get()` | Append `.get()` after generated mapper calls |
-| Storage write statements (`reserves[t] = …`) not emitted | Add `self.reserves(&t).set(&new_val)` calls |
-| `nonReentrant` lock/unlock wrapper not emitted | Add `self.locked().set(&true/false)` around body |
-
-These are the only edits made to `DexTokenSwap.rs` beyond raw xtract output.
-See the file header for the exact list.
+As of v1.0, mapping reads and writes and the `nonReentrant` lock/unlock wrapper are
+all emitted automatically. The generated `DexTokenSwap.rs` in `demo/dex_tokenswap/src/`
+required no manual edits beyond raw XTract output.
 
 ---
 

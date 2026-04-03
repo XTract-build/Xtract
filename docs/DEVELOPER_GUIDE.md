@@ -207,8 +207,14 @@ const { contractAddress, explorerUrl } = await deployer.deploy({
 - External contract calls
 
 ### Not yet supported
-- Do-while loops, inline assembly, try-catch
+- Inline assembly, try-catch
 - Libraries, diamond inheritance
+
+### Supported since v1.0
+- Do-while loops → `loop { ... if !cond { break } }`
+- `nonReentrant` modifier → full lock/unlock wrapper inlined
+- `delete var` → `.clear()`
+- `unchecked { }` → passthrough with comment
 
 ## Example: SimpleStorage
 

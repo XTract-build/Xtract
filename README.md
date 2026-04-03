@@ -189,28 +189,22 @@ cat MyStorage.rs
 ## Supported Solidity Features
 
 ### Fully Supported
-- Contract declarations
-- State variables (all basic types)
-- Single mappings (`mapping(address => uint256)`)
-- Nested mappings (`mapping(address => mapping(address => uint256))`)
+- Contract declarations, constructors, state variables
+- Single and nested mappings
 - Events with indexed parameters
-- Custom errors
-- Structs
+- Custom errors, structs
 - Functions (public, private, view, payable)
-- Constructors
-- Function modifiers (onlyOwner, custom)
+- Function modifiers — full pre/post body inlining, including `nonReentrant`
 - Basic inheritance (`contract A is B, C`)
-- require/revert statements
-- If/else statements
-- For loops (counter-based)
-- While loops
+- `require` / `revert`, if/else, for loops, while loops, do-while loops
+- `delete var` → `.clear()`, `unchecked { }` passthrough
+- `SafeMath` / `using-for` → inlined arithmetic operators
 
 ### Requires Manual Review
-- Complex expressions (may need adjustment)
+- Complex arithmetic expressions
 - External contract calls
 
 ### Not Yet Supported
-- Do-while loops
 - Inline assembly
 - Try-catch blocks
 - Libraries
@@ -233,6 +227,12 @@ The `test_cases/` directory contains 50 fully working examples including:
 ## Documentation
 
 ### Current version
+- **[docs/v1.0/GETTING_STARTED.md](docs/v1.0/GETTING_STARTED.md)** — 5-minute quickstart for EVM developers
+- **[docs/v1.0/TRANSPILER_REFERENCE.md](docs/v1.0/TRANSPILER_REFERENCE.md)** — full Solidity feature coverage table and `--json` output format
+- **[docs/v1.0/SDK_REFERENCE.md](docs/v1.0/SDK_REFERENCE.md)** — TypeScript SDK API reference
+- **[docs/v1.0/MIGRATION_GUIDE.md](docs/v1.0/MIGRATION_GUIDE.md)** — EVM → MultiversX concept mapping
+- **[docs/v1.0/TUTORIAL_ERC20.md](docs/v1.0/TUTORIAL_ERC20.md)** — end-to-end ERC20 walkthrough
+- **[docs/v1.0/TUTORIAL_DEX.md](docs/v1.0/TUTORIAL_DEX.md)** — end-to-end DEX walkthrough
 - **[docs/v1.0/README.md](docs/v1.0/README.md)** — v1.0 feature overview and full pipeline walkthrough
 - **[docs/v1.0/CHANGELOG.md](docs/v1.0/CHANGELOG.md)** — what changed from v0.30 to v1.0
 - **[docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md)** — CLI reference, Python API, TypeScript SDK, type mapping
