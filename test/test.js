@@ -200,7 +200,7 @@ console.log('\nTest: xtract --json file.sol with relative path');
 {
     // Use an existing fixture via a relative path from the repo root
     const repoRoot = path.resolve(__dirname, '..');
-    const relPath = path.relative(repoRoot, path.join(repoRoot, 'test_cases', 'solidity', 'Counter.sol'));
+    const relPath = path.relative(repoRoot, path.join(repoRoot, 'test_cases', 'solidity', 'SimpleStorage.sol'));
 
     const result = run(['--json', relPath], { cwd: repoRoot });
 
@@ -208,6 +208,29 @@ console.log('\nTest: xtract --json file.sol with relative path');
         !result.stderr.includes('Unknown subcommand'),
         '--json <relative-path.sol> does not hit unknown-subcommand error (routes to transpile)'
     );
+
+    // Stronger assertions: only run when Python + xtract are available
+    const hasPython = spawnSync('python3', ['-m', 'xtract.cli', '--help'], { encoding: 'utf-8' }).status === 0;
+    if (!hasPython) {
+        console.log('  SKIP: --json stdout/exit-code assertions (xtract not installed)');
+    } else {
+        assert(
+            result.status === 0,
+            '--json exits with code 0'
+        );
+        assert(
+            result.stdout.trim().length > 0,
+            '--json stdout is non-empty'
+        );
+        let parsed;
+        let parseOk = false;
+        try { parsed = JSON.parse(result.stdout); parseOk = true; } catch (_) {}
+        assert(parseOk, '--json stdout is valid JSON');
+        assert(
+            parseOk && parsed.success === true,
+            '--json JSON output has success === true'
+        );
+    }
 }
 
 console.log('\nTest: xtract --json file with spaces in path routes to transpile');
