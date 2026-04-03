@@ -113,9 +113,31 @@ To save to a custom path:
 xtract wallet create --output ./my_wallet.pem
 ```
 
+By default, `wallet create` automatically requests devnet EGLD from the faucet after generating the wallet. Pass `--no-faucet` to skip that:
+
+```bash
+xtract wallet create --no-faucet
+```
+
 ---
 
-## 4. Build the Contract
+## 4. Fund your Wallet
+
+If you skipped the automatic faucet request, or need to top up later:
+
+```bash
+xtract faucet
+# or explicitly:
+xtract faucet --network devnet --wallet ~/.multiversx/wallet.pem
+# or by address (no wallet file needed):
+xtract faucet --address erd1...
+```
+
+`--network` accepts `devnet` (default) or `testnet`. Mainnet is not supported — real EGLD cannot be requested from a faucet.
+
+---
+
+## 5. Build the Contract
 
 After placing the transpiled `.rs` file inside a MultiversX contract project (with a `Cargo.toml` and `multiversx.json`):
 
@@ -136,7 +158,7 @@ Requires `mxpy` and `sc-meta` on `PATH`. See [demo/dex_tokenswap/](../../demo/de
 
 ---
 
-## 5. Deploy to Devnet
+## 6. Deploy to Devnet
 
 ```bash
 xtract deploy ./my_contract/output/my-contract.wasm \
@@ -183,10 +205,12 @@ xtract MyToken.sol
 xtract build ./my_token/
 # → ./my_token/output/my_token.wasm + my_token.abi.json
 
-# Create wallet (first time only)
+# Create wallet (first time only) — auto-requests devnet EGLD
 xtract wallet create
 # prints address + 24-word mnemonic — save it
-# fund at: https://devnet-wallet.multiversx.com/
+
+# Fund wallet if needed
+xtract faucet
 
 # Deploy
 xtract deploy ./my_token/output/my_token.wasm \

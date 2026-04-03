@@ -67,6 +67,19 @@ xtract wallet create --output ./wallet.pem   # custom path
 
 Prints address, mnemonic (save it — shown once), and faucet URLs for devnet/testnet.
 
+### Faucet
+
+```bash
+xtract faucet                                             # devnet, wallet at ~/.multiversx/wallet.pem
+xtract faucet --network testnet                           # testnet
+xtract faucet --wallet ./wallet.pem                      # explicit wallet path
+xtract faucet --address erd1...                          # by address (no wallet file needed)
+```
+
+Requests free EGLD from the MultiversX devnet or testnet faucet. `--network` accepts `devnet` (default) or `testnet`.
+
+`xtract wallet create` automatically calls the faucet after generating a wallet unless `--no-faucet` is passed.
+
 ### Deploy
 
 ```bash

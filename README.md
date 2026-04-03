@@ -137,6 +137,11 @@ xtract build ./my_contract/
 xtract wallet create
 xtract wallet create --output ./wallet.pem
 
+# Faucet  (requires xtract[deploy])
+xtract faucet                            # devnet EGLD → default wallet
+xtract faucet --network testnet
+xtract faucet --address erd1...          # by address
+
 # Deploy  (requires xtract[deploy])
 xtract deploy ./output/my_contract.wasm \
   --abi    ./output/my_contract.abi.json \
