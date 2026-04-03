@@ -40,7 +40,7 @@ XTract analyzes Solidity code and generates MultiversX Rust code that can be com
 
 ## v1.0.0 — What's New
 
-v1.0 adds the full deployment pipeline on top of v0.30's transpiler. See [docs/v1.0/CHANGELOG.md](docs/v1.0/CHANGELOG.md) for the complete change list.
+v1.0 adds the full deployment pipeline on top of the transpiler. See [docs/v1.0/CHANGELOG.md](docs/v1.0/CHANGELOG.md) for the complete change list.
 
 ### New in v1.0
 - **`xtract build`** — compiles transpiled Rust to WASM via `mxpy`
@@ -49,7 +49,7 @@ v1.0 adds the full deployment pipeline on top of v0.30's transpiler. See [docs/v
 - **`pip install xtract[deploy]`** — optional dep group for the above
 - **TypeScript SDK** — `xtract-cli/sdk` exposes `XtractTranspiler` and `ContractDeployer`
 
-### Transpiler features (from v0.30.1)
+### Transpiler Features
 
 ### Core Features
 - **Function body transpilation**: Converts `require()`, `emit()`, `return`, and assignments
@@ -236,10 +236,6 @@ The `test_cases/` directory contains 50 fully working examples including:
 - **[docs/v1.0/README.md](docs/v1.0/README.md)** — v1.0 feature overview and full pipeline walkthrough
 - **[docs/v1.0/CHANGELOG.md](docs/v1.0/CHANGELOG.md)** — what changed from v0.30 to v1.0
 - **[docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md)** — CLI reference, Python API, TypeScript SDK, type mapping
-
-### Previous versions
-- **[docs/v0.30/](docs/v0.30/)** — v0.30.1 release notes, implementation report, test results
-- **[docs/v0.25/](docs/v0.25/)** — v0.25 release notes
 
 ## Repository Structure
 
