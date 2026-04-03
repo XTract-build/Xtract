@@ -43,6 +43,7 @@ console.log('\nTest: xtract --help shows all subcommands');
     assert(out.includes('build'), '--help mentions build');
     assert(out.includes('deploy'), '--help mentions deploy');
     assert(out.includes('scaffold'), '--help mentions scaffold');
+    assert(out.includes('faucet'), '--help mentions faucet');
 }
 
 // ─── test: --version ─────────────────────────────────────────────────────────

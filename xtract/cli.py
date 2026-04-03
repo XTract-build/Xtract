@@ -136,12 +136,18 @@ def wallet_group():
     default=None,
     help="Where to save the PEM file (default: ~/.multiversx/wallet.pem)",
 )
-def wallet_create(output: Optional[Path]):
+@click.option(
+    "--no-faucet",
+    is_flag=True,
+    default=False,
+    help="Skip automatic devnet faucet request after wallet creation",
+)
+def wallet_create(output: Optional[Path], no_faucet: bool):
     """Generate a new wallet and save it as a PEM file.
 
     Requires: pip install xtract[deploy]
     """
-    from .wallet import create_wallet, DEFAULT_WALLET_PATH, FAUCET_URLS
+    from .wallet import create_wallet, DEFAULT_WALLET_PATH, FAUCET_URLS, request_faucet, EXPLORER_URLS
 
     dest = output or DEFAULT_WALLET_PATH
     try:
@@ -158,9 +164,74 @@ def wallet_create(output: Optional[Path]):
     click.echo(f"   PEM file: {info.pem_path}")
     click.echo(click.style("\n⚠️  Save your mnemonic — it will not be shown again:", fg="yellow"))
     click.echo(f"   {info.mnemonic}")
-    click.echo(click.style("\n💧 Fund your wallet before deploying:", fg="cyan"))
-    for network, url in FAUCET_URLS.items():
-        click.echo(f"   {network}: {url}")
+
+    if not no_faucet:
+        click.echo(click.style("\n💧 Requesting devnet funds from faucet...", fg="cyan"))
+        result = request_faucet(info.address, "devnet")
+        if result.success:
+            click.echo(f"   Requested 1 xEGLD for {info.address} on devnet")
+            click.echo(f"   Explorer: {EXPLORER_URLS['devnet']}/accounts/{info.address}")
+        else:
+            click.echo(f"   {result.message}")
+            click.echo(f"   Fund manually: {FAUCET_URLS['devnet']}")
+    else:
+        click.echo(click.style("\n💧 Fund your wallet before deploying:", fg="cyan"))
+        for network, url in FAUCET_URLS.items():
+            click.echo(f"   {network}: {url}")
+
+
+# ---------------------------------------------------------------------------
+# faucet
+# ---------------------------------------------------------------------------
+
+@main.command("faucet")
+@click.option(
+    "--wallet", "wallet_path",
+    type=click.Path(dir_okay=False, path_type=Path),
+    default=None,
+    help="Path to PEM wallet file (default: ~/.multiversx/wallet.pem)",
+)
+@click.option(
+    "--network",
+    default="devnet",
+    type=click.Choice(["devnet", "testnet"]),
+    show_default=True,
+    help="Target network",
+)
+@click.option(
+    "--address",
+    default=None,
+    help="Bech32 address (overrides --wallet)",
+)
+def faucet_cmd(wallet_path: Optional[Path], network: str, address: Optional[str]):
+    """Request testnet/devnet EGLD from the faucet.
+
+    Uses --address directly, or loads the PEM wallet to extract the address.
+    """
+    from .wallet import DEFAULT_WALLET_PATH, FAUCET_URLS, EXPLORER_URLS, request_faucet
+
+    if address:
+        resolved_address = address
+    else:
+        pem = wallet_path or DEFAULT_WALLET_PATH
+        if not pem.exists():
+            click.echo(f"Error: Wallet not found at {pem}. Use --address or --wallet.", err=True)
+            raise SystemExit(1)
+        try:
+            from multiversx_sdk import UserSigner
+        except ImportError:
+            click.echo("Error: Run: pip install xtract[deploy]", err=True)
+            raise SystemExit(1)
+        signer = UserSigner.from_pem_file(pem)
+        resolved_address = signer.get_pubkey().to_address("erd").to_bech32()
+
+    result = request_faucet(resolved_address, network)
+    if result.success:
+        click.echo(f"Requested 1 xEGLD for {resolved_address} on {network}")
+        click.echo(f"Explorer: {EXPLORER_URLS[network]}/accounts/{resolved_address}")
+    else:
+        click.echo(result.message)
+        click.echo(f"Fund manually: {FAUCET_URLS[network]}")
 
 
 # ---------------------------------------------------------------------------

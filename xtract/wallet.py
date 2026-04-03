@@ -1,12 +1,44 @@
 from dataclasses import dataclass
 from pathlib import Path
+import urllib.request
+import urllib.parse
+import urllib.error
 
 DEFAULT_WALLET_PATH = Path.home() / ".multiversx" / "wallet.pem"
 
 FAUCET_URLS = {
-    "devnet": "https://devnet-wallet.multiversx.com/",
-    "testnet": "https://testnet-wallet.multiversx.com/",
+    "devnet": "https://devnet-wallet.multiversx.com/faucet",
+    "testnet": "https://testnet-wallet.multiversx.com/faucet",
 }
+
+EXPLORER_URLS = {
+    "devnet": "https://devnet-explorer.multiversx.com",
+    "testnet": "https://testnet-explorer.multiversx.com",
+}
+
+FAUCET_API_URL = "https://r3d4.fr/faucet"
+
+
+@dataclass
+class FaucetResult:
+    success: bool
+    message: str
+
+
+def request_faucet(address: str, network: str = "devnet") -> FaucetResult:
+    """Request testnet/devnet EGLD from the faucet API."""
+    data = urllib.parse.urlencode({"address": address, "token": network}).encode()
+    req = urllib.request.Request(FAUCET_API_URL, data=data, method="POST")
+    req.add_header("Content-Type", "application/x-www-form-urlencoded")
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            body = resp.read().decode().strip()
+            return FaucetResult(success=True, message=body)
+    except urllib.error.HTTPError as e:
+        body = e.read().decode().strip()
+        return FaucetResult(success=False, message=body or str(e))
+    except Exception as e:
+        return FaucetResult(success=False, message=str(e))
 
 
 @dataclass

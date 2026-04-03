@@ -186,6 +186,36 @@ async function runDeploy(args) {
     }
 }
 
+// ─── subcommand: faucet ───────────────────────────────────────────────────────
+
+function runFaucet(args) {
+    const python = findPython();
+    if (!python) {
+        console.error('Error: Python 3.9+ is required but not found.');
+        process.exit(1);
+    }
+
+    const pythonArgs = ['-m', 'xtract.cli', 'faucet', ...args];
+
+    const proc = spawn(python, pythonArgs, {
+        cwd: packageRoot,
+        stdio: 'inherit',
+        env: {
+            ...process.env,
+            PYTHONPATH: packageRoot
+        }
+    });
+
+    proc.on('error', (err) => {
+        console.error(`Error running Python: ${err.message}`);
+        process.exit(1);
+    });
+
+    proc.on('close', (code) => {
+        process.exit(code || 0);
+    });
+}
+
 // ─── subcommand: scaffold ─────────────────────────────────────────────────────
 
 function runScaffold(args) {
@@ -358,6 +388,7 @@ Usage:
   xtract build <contract-dir>                    Build with sc-meta
   xtract deploy --config <xtract.config.json>   Deploy a compiled contract
   xtract scaffold <name>                         Create new contract scaffolding
+  xtract faucet [--network devnet|testnet]       Request testnet/devnet EGLD
 
   xtract [--json] [--verbose] [--quiet] <file.sol>   # shorthand for 'xtract transpile'
 
@@ -429,6 +460,9 @@ async function main() {
             break;
         case 'scaffold':
             runScaffold(rest);
+            break;
+        case 'faucet':
+            runFaucet(rest);
             break;
         default:
             console.error(`Error: Unknown subcommand '${subcommand}'.`);
