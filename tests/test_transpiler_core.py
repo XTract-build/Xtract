@@ -552,3 +552,69 @@ def test_storage_mapper_gets_get_in_expression():
 def test_fifty_test_cases():
     """Verify we have at least 50 test cases"""
     assert len(TEST_CASES) >= 50, f"Expected at least 50 test cases, got {len(TEST_CASES)}"
+
+
+# Type cast transpilation tests
+
+def test_type_cast_uint256_zero():
+    """uint256(0) should transpile to BigUint::zero()"""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+    contract C {
+        uint256 public x;
+        function reset() public {
+            x = uint256(0);
+        }
+    }
+    """
+    result = Transpiler().convert(sol)
+    assert "BigUint::zero()" in result
+
+
+def test_type_cast_address_zero():
+    """address(0) should transpile to ManagedAddress::zero()"""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+    contract C {
+        address public owner;
+        function clear() public {
+            owner = address(0);
+        }
+    }
+    """
+    result = Transpiler().convert(sol)
+    assert "ManagedAddress::zero()" in result
+
+
+def test_type_cast_address_var():
+    """address(someAddr) should transpile to ManagedAddress::from(&someAddr)"""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+    contract C {
+        address public target;
+        function setTarget(address someAddr) public {
+            target = address(someAddr);
+        }
+    }
+    """
+    result = Transpiler().convert(sol)
+    assert "ManagedAddress::from(" in result
+
+
+def test_type_cast_uint256_var():
+    """uint256(someVar) should transpile to BigUint::from(someVar)"""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+    contract C {
+        uint256 public amount;
+        function setAmount(uint64 someVar) public {
+            amount = uint256(someVar);
+        }
+    }
+    """
+    result = Transpiler().convert(sol)
+    assert "BigUint::from(" in result

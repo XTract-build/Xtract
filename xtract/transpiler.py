@@ -1280,18 +1280,42 @@ class Transpiler:
         # Handle msg.sender
         expr = expr.replace("msg.sender", "self.blockchain().get_caller()")
 
-        # Handle address(0)
-        expr = expr.replace("address(0)", "ManagedAddress::zero()")
-
         # Handle block.timestamp
         expr = expr.replace("block.timestamp", "self.blockchain().get_block_timestamp()")
 
-        # Handle msg.sender first (before variable conversion)
-        expr = expr.replace("msg.sender", "self.blockchain().get_caller()")
-        
-        # Handle address(0)
-        expr = expr.replace("address(0)", "ManagedAddress::<Self::Api>::zero()")
-        
+        # Handle Solidity type casts: uint256(x), int256(x), address(x), bool(x), bytes32(x)
+        # Must run before number replacement so inner expressions are still in raw Solidity form.
+        def _apply_type_cast(m: re.Match) -> str:
+            cast_type = m.group(1)
+            inner_raw = m.group(2).strip()
+            inner = self._convert_expression(inner_raw)
+            if cast_type.startswith('uint'):
+                if inner_raw == '0':
+                    return 'BigUint::zero()'
+                if re.match(r'^-\d+$', inner_raw):
+                    self._warnings.append(TranspilationWarning(
+                        f"Type cast {cast_type}({inner_raw}): casting negative value to unsigned — emitting BigUint::zero() with TODO"
+                    ))
+                    return f'/* TODO: {cast_type}({inner_raw}) - negative cast to unsigned */ BigUint::zero()'
+                return f'BigUint::from({inner})'
+            if cast_type.startswith('int'):
+                return f'BigInt::from({inner})'
+            if cast_type == 'address':
+                if inner_raw == '0':
+                    return 'ManagedAddress::zero()'
+                return f'ManagedAddress::from(&{inner})'
+            if cast_type == 'bool':
+                return f'({inner}) as bool'
+            if cast_type.startswith('bytes'):
+                return f'/* TODO: bytes cast */ ManagedBuffer::from({inner})'
+            return m.group(0)
+
+        expr = re.sub(
+            r'\b(uint\d*|int\d*|address|bool|bytes\d*)\s*\(([^()]+)\)',
+            _apply_type_cast,
+            expr,
+        )
+
         # Handle simple arithmetic and comparisons (basic cases)
         # This would need to be much more sophisticated for complex expressions
 
