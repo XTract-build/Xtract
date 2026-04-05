@@ -618,3 +618,17 @@ def test_type_cast_uint256_var():
     """
     result = Transpiler().convert(sol)
     assert "BigUint::from(" in result
+
+
+def test_nested_type_cast_uint256_uint128():
+    """uint256(uint128(x)) must not be silently skipped by a [^()]+ regex"""
+    t = Transpiler()
+    result = t._convert_expression("uint256(uint128(x))")
+    assert result == "BigUint::from(x as u128)", f"Got: {result!r}"
+
+
+def test_nested_type_cast_address_bytes20():
+    """address(bytes20(x)) must be converted through both cast layers"""
+    t = Transpiler()
+    result = t._convert_expression("address(bytes20(x))")
+    assert result == "ManagedAddress::from(&x)", f"Got: {result!r}"

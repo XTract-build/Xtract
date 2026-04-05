@@ -1260,6 +1260,34 @@ class Transpiler:
 
         return ''.join(parts)
 
+    def _find_cast(self, expr: str):
+        """Detect a Solidity type cast of the form typename(...).
+
+        Uses a paren-depth counter instead of [^()]+ so that nested casts
+        like uint256(uint128(x)) are handled rather than silently skipped.
+
+        Returns (type_name, inner_expr) when the *entire* expr is a single
+        type cast, or None otherwise.
+        """
+        m = re.match(
+            r'^(uint(?:256|128|64|32|16|8)|int(?:256|128|64|32|16|8)|address|bytes(?:32|20)|bool)\s*\(',
+            expr,
+        )
+        if not m:
+            return None
+        depth = 1
+        i = m.end()
+        while i < len(expr) and depth > 0:
+            if expr[i] == '(':
+                depth += 1
+            elif expr[i] == ')':
+                depth -= 1
+            i += 1
+        # The cast must cover the entire expression with no trailing content.
+        if depth != 0 or i != len(expr):
+            return None
+        return m.group(1), expr[m.end():i - 1]
+
     def _convert_expression(self, expr: str) -> str:
         """Convert Solidity expressions to MultiversX equivalents"""
         # Inline known library calls before any other transformation
@@ -1283,39 +1311,6 @@ class Transpiler:
         # Handle block.timestamp
         expr = expr.replace("block.timestamp", "self.blockchain().get_block_timestamp()")
 
-        # Handle Solidity type casts: uint256(x), int256(x), address(x), bool(x), bytes32(x)
-        # Must run before number replacement so inner expressions are still in raw Solidity form.
-        def _apply_type_cast(m: re.Match) -> str:
-            cast_type = m.group(1)
-            inner_raw = m.group(2).strip()
-            inner = self._convert_expression(inner_raw)
-            if cast_type.startswith('uint'):
-                if inner_raw == '0':
-                    return 'BigUint::zero()'
-                if re.match(r'^-\d+$', inner_raw):
-                    self._warnings.append(TranspilationWarning(
-                        f"Type cast {cast_type}({inner_raw}): casting negative value to unsigned — emitting BigUint::zero() with TODO"
-                    ))
-                    return f'/* TODO: {cast_type}({inner_raw}) - negative cast to unsigned */ BigUint::zero()'
-                return f'BigUint::from({inner})'
-            if cast_type.startswith('int'):
-                return f'BigInt::from({inner})'
-            if cast_type == 'address':
-                if inner_raw == '0':
-                    return 'ManagedAddress::zero()'
-                return f'ManagedAddress::from(&{inner})'
-            if cast_type == 'bool':
-                return f'({inner}) as bool'
-            if cast_type.startswith('bytes'):
-                return f'/* TODO: bytes cast */ ManagedBuffer::from({inner})'
-            return m.group(0)
-
-        expr = re.sub(
-            r'\b(uint\d*|int\d*|address|bool|bytes\d*)\s*\(([^()]+)\)',
-            _apply_type_cast,
-            expr,
-        )
-
         # Handle simple arithmetic and comparisons (basic cases)
         # This would need to be much more sophisticated for complex expressions
 
@@ -1324,6 +1319,41 @@ class Transpiler:
 
         # Handle power operator (limited)
         expr = expr.replace("**", ".pow")
+
+        # Handle type casts: uint256(x), uint128(x), address(bytes20(x)), etc.
+        # _find_cast uses paren-depth counting so nested casts like
+        # uint256(uint128(x)) are processed correctly instead of being skipped
+        # by the [^()]+ regex that origin used.
+        cast_result = self._find_cast(expr.strip())
+        if cast_result is not None:
+            type_name, inner_expr = cast_result
+            inner_raw = inner_expr.strip()
+            converted_inner = self._convert_expression(inner_raw)
+            if type_name == 'uint256':
+                if inner_raw == '0':
+                    return 'BigUint::zero()'
+                if re.match(r'^-\d+$', inner_raw):
+                    self._warnings.append(TranspilationWarning(
+                        f"Type cast {type_name}({inner_raw}): casting negative value to unsigned — emitting BigUint::zero() with TODO"
+                    ))
+                    return f'/* TODO: {type_name}({inner_raw}) - negative cast to unsigned */ BigUint::zero()'
+                return f'BigUint::from({converted_inner})'
+            _uint_primitive = {'uint128': 'u128', 'uint64': 'u64', 'uint32': 'u32', 'uint16': 'u16', 'uint8': 'u8'}
+            if type_name in _uint_primitive:
+                return f'{converted_inner} as {_uint_primitive[type_name]}'
+            if type_name == 'int256':
+                return f'BigInt::from({converted_inner})'
+            _int_primitive = {'int128': 'i128', 'int64': 'i64', 'int32': 'i32', 'int16': 'i16', 'int8': 'i8'}
+            if type_name in _int_primitive:
+                return f'{converted_inner} as {_int_primitive[type_name]}'
+            if type_name == 'address':
+                if inner_raw == '0':
+                    return 'ManagedAddress::zero()'
+                return f'ManagedAddress::from(&{converted_inner})'
+            if type_name == 'bool':
+                return f'({converted_inner}) as bool'
+            if type_name.startswith('bytes'):
+                return converted_inner  # transparent cast (bytes20, bytes32)
 
         # Handle 1 minutes -> 60 seconds conversion
         expr = re.sub(r'(\d+)\s*minutes', lambda m: str(int(m.group(1)) * 60), expr)
