@@ -494,6 +494,105 @@ def test_mapping_assignment_emits_set():
     assert "self.reserves(" in result
 
 
+def test_int256_cast_variable():
+    """int256(someVar) → BigInt::from(someVar)"""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+
+    contract CastTest {
+        function cast(int256 someVar) public pure returns (int256) {
+            return int256(someVar);
+        }
+    }
+    """
+    result = Transpiler().convert(sol)
+    assert "BigInt::from(someVar)" in result
+
+
+def test_int256_cast_positive_literal():
+    """int256(42) → BigInt::from(42i64)"""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+
+    contract CastTest {
+        function cast() public pure returns (int256) {
+            return int256(42);
+        }
+    }
+    """
+    result = Transpiler().convert(sol)
+    assert "BigInt::from(42i64)" in result
+
+
+def test_int256_cast_negative_literal_emits_warning():
+    """int256(-5) → BigInt::from(-5i64) and a warning is emitted"""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+
+    contract CastTest {
+        function cast() public pure returns (int256) {
+            return int256(-5);
+        }
+    }
+    """
+    transpiler = Transpiler()
+    result = transpiler.convert(sol)
+    assert "BigInt::from(-5i64)" in result
+    warning_messages = [w.message for w in transpiler._warnings]
+    assert any("int256" in msg and "negative" in msg.lower() for msg in warning_messages)
+
+
+def test_bool_cast_from_one():
+    """bool(1) → true"""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+
+    contract CastTest {
+        function cast() public pure returns (bool) {
+            return bool(1);
+        }
+    }
+    """
+    result = Transpiler().convert(sol)
+    assert "return true;" in result
+
+
+def test_bool_cast_from_zero():
+    """bool(0) → false"""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+
+    contract CastTest {
+        function cast() public pure returns (bool) {
+            return bool(0);
+        }
+    }
+    """
+    result = Transpiler().convert(sol)
+    assert "return false;" in result
+
+
+def test_bool_cast_from_variable():
+    """bool(someVar) → someVar != 0"""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+
+    contract CastTest {
+        function cast(uint256 someVar) public pure returns (bool) {
+            return bool(someVar);
+        }
+    }
+    """
+    result = Transpiler().convert(sol)
+    assert "someVar != 0" in result
+
+
 def test_nested_mapping_assignment_emits_set():
     """Test that nested mapping writes (mapping[k1][k2] = expr) emit .set(...)"""
     sol = """

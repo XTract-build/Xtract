@@ -1305,6 +1305,37 @@ class Transpiler:
             ))
             return 'ManagedAddress::<Self::Api>::zero()'
 
+        # Handle int256(x) type casts
+        int256_cast = re.match(r'^int256\((.+)\)$', expr.strip())
+        if int256_cast:
+            inner = int256_cast.group(1).strip()
+            # Negative literal: int256(-5) → BigInt::from(-5i64) + warning
+            neg_lit = re.match(r'^-(\d+)$', inner)
+            if neg_lit:
+                self._warnings.append(TranspilationWarning(
+                    "int256 cast of negative literal: ensure value fits in i64"
+                ))
+                return f'BigInt::from(-{neg_lit.group(1)}i64)'
+            # Positive literal: int256(42) → BigInt::from(42i64)
+            pos_lit = re.match(r'^(\d+)$', inner)
+            if pos_lit:
+                return f'BigInt::from({pos_lit.group(1)}i64)'
+            # Variable or expression: int256(someVar) → BigInt::from(someVar)
+            return f'BigInt::from({inner})'
+
+        # Handle bool(x) type casts
+        bool_cast = re.match(r'^bool\((.+)\)$', expr.strip())
+        if bool_cast:
+            inner = bool_cast.group(1).strip()
+            # Literal 0 → false
+            if re.match(r'^0+$', inner):
+                return 'false'
+            # Positive literal → true
+            if re.match(r'^\d+$', inner):
+                return 'true'
+            # Variable: bool(someVar) → someVar != 0
+            return f'{inner} != 0'
+
         # Handle msg.sender
         expr = expr.replace("msg.sender", "self.blockchain().get_caller()")
 
