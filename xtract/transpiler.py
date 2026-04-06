@@ -1565,7 +1565,7 @@ class Transpiler:
         else:
             annotation = "#[init]\n    "
 
-        params = self._format_params(func["params"]) if func["name"] else []
+        params = self._format_params(func["params"])
         return_type = self._format_return(func.get("return_type"))
 
         # Parse and convert body statements

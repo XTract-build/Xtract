@@ -748,3 +748,23 @@ def test_nested_type_cast_address_bytes20():
     t = Transpiler()
     result = t._convert_expression("address(bytes20(x))")
     assert result == "ManagedAddress::from(&x)", f"Got: {result!r}"
+
+
+def test_constructor_params_emitted_in_init():
+    """Constructor parameters must appear in #[init] fn signature with correct types."""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+
+    contract Token {
+        address public owner;
+        uint256 public totalSupply;
+
+        constructor(address _owner, uint256 _initialSupply) {
+            owner = _owner;
+            totalSupply = _initialSupply;
+        }
+    }
+    """
+    result = Transpiler().convert(sol)
+    assert "fn init(&self, _owner: ManagedAddress<Self::Api>, _initialSupply: BigUint<Self::Api>)" in result
