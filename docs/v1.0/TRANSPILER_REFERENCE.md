@@ -68,6 +68,16 @@ Full feature coverage for the v1.0 transpiler (`xtract/transpiler.py`).
 | `array.pop()` | `let last = self.array().len() - 1; self.array().remove(last);` | two-statement expansion |
 | `array.length` | `self.array().len()` | called on VecMapper directly, not `.get().len()` |
 | `array[i]` (read) | `self.array().get(i + 1)` | VecMapper is 1-indexed |
+| `msg.sender` | `self.blockchain().get_caller()` | |
+| `block.timestamp` | `self.blockchain().get_block_timestamp()` | |
+| `block.number` | `self.blockchain().get_block_nonce()` | |
+| `address(this)` | `self.blockchain().get_sc_address()` | |
+| `now` | `self.blockchain().get_block_timestamp()` | Solidity alias for `block.timestamp` |
+| `tx.origin` | `self.blockchain().get_caller()` | emits warning — see behavioral note below |
+| `type(uint256).max` | `BigUint::from(u64::MAX)` | TODO comment: true max is 2^256-1 |
+| `type(uint256).min` | `BigUint::zero()` | |
+| `type(int256).max` | `BigInt::from(i64::MAX)` | TODO comment: true max is 2^255-1 |
+| `type(int256).min` | `BigInt::from(i64::MIN)` | TODO comment: true min is -(2^255) |
 
 ---
 
@@ -87,6 +97,18 @@ The `self.crypto()` API expects a `&ManagedBuffer` argument. If the input in you
 let buf = ManagedBuffer::from(data.as_slice());
 let hash = self.crypto().keccak256(&buf);
 ```
+
+---
+
+## Behavioral Notes
+
+### `tx.origin` vs `msg.sender` on MultiversX
+
+On EVM, `tx.origin` is the original EOA that initiated the transaction, while `msg.sender` is the immediate caller (which may be a contract). On MultiversX, there is no equivalent distinction — the caller is always the direct caller. XTract maps `tx.origin` to `self.blockchain().get_caller()` and emits a `TranspilationWarning` to flag this semantic difference for manual review.
+
+### `type(uint256).max`
+
+The true uint256 maximum is 2^256-1, which exceeds `u64::MAX`. XTract emits `BigUint::from(u64::MAX)` as a conservative placeholder with a TODO comment. Replace with the correct `BigUint` construction if your contract depends on the exact value.
 
 ---
 

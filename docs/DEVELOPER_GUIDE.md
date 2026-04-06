@@ -256,6 +256,14 @@ The transpiler handles this automatically:
 - `delete var` → `.clear()`
 - `unchecked { }` → passthrough with comment
 - Constructor parameters → emitted in `#[init]` signature with type mapping
+- `msg.sender` → `self.blockchain().get_caller()`
+- `block.timestamp` / `now` → `self.blockchain().get_block_timestamp()`
+- `block.number` → `self.blockchain().get_block_nonce()`
+- `address(this)` → `self.blockchain().get_sc_address()`
+- `tx.origin` → `self.blockchain().get_caller()` + warning (see note below)
+- `type(uint256).max` / `type(uint256).min` → `BigUint::from(u64::MAX)` / `BigUint::zero()` with TODO
+
+> **`tx.origin` on MultiversX:** On EVM, `tx.origin` is the originating EOA; on MultiversX there is no such distinction — the caller is always the direct caller. XTract maps `tx.origin` to `get_caller()` and emits a warning. Review any access-control logic that relies on `tx.origin != msg.sender`.
 
 ### Constructor parameter mapping
 
