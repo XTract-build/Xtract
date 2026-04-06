@@ -905,3 +905,47 @@ def test_array_storage_mapper_type():
     """A Solidity uint256[] storage var must produce a VecMapper in the trait definition."""
     result = Transpiler().convert(_ARRAY_CONTRACT)
     assert "VecMapper<" in result, "Expected VecMapper type for array storage variable"
+
+
+def test_block_number():
+    """block.number should transpile to self.blockchain().get_block_nonce()"""
+    t = Transpiler()
+    result = t._convert_expression("block.number")
+    assert result == "self.blockchain().get_block_nonce()", f"Got: {result!r}"
+
+
+def test_address_this():
+    """address(this) should transpile to self.blockchain().get_sc_address()"""
+    t = Transpiler()
+    result = t._convert_expression("address(this)")
+    assert result == "self.blockchain().get_sc_address()", f"Got: {result!r}"
+
+
+def test_type_uint256_max():
+    """type(uint256).max should transpile to BigUint::from(u64::MAX) with a TODO comment"""
+    t = Transpiler()
+    result = t._convert_expression("type(uint256).max")
+    assert "BigUint::from(u64::MAX)" in result, f"Got: {result!r}"
+    assert "TODO" in result, f"Expected TODO comment in: {result!r}"
+
+
+def test_type_uint256_min():
+    """type(uint256).min should transpile to BigUint::zero()"""
+    t = Transpiler()
+    result = t._convert_expression("type(uint256).min")
+    assert result == "BigUint::zero()", f"Got: {result!r}"
+
+
+def test_now_alias():
+    """Solidity `now` alias should transpile to self.blockchain().get_block_timestamp()"""
+    t = Transpiler()
+    result = t._convert_expression("now")
+    assert result == "self.blockchain().get_block_timestamp()", f"Got: {result!r}"
+
+
+def test_tx_origin_maps_to_caller_with_warning():
+    """tx.origin should transpile to get_caller() and emit a warning"""
+    t = Transpiler()
+    result = t._convert_expression("tx.origin")
+    assert "get_caller()" in result, f"Got: {result!r}"
+    assert any("tx.origin" in w.message for w in t._warnings), "Expected warning about tx.origin"

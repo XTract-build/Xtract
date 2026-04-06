@@ -1456,8 +1456,42 @@ class Transpiler:
         # Handle msg.sender
         expr = expr.replace("msg.sender", "self.blockchain().get_caller()")
 
-        # Handle block.timestamp
+        # Handle block.timestamp / now (Solidity alias)
         expr = expr.replace("block.timestamp", "self.blockchain().get_block_timestamp()")
+        expr = expr.replace("now", "self.blockchain().get_block_timestamp()")
+
+        # Handle block.number
+        expr = expr.replace("block.number", "self.blockchain().get_block_nonce()")
+
+        # Handle address(this)
+        expr = expr.replace("address(this)", "self.blockchain().get_sc_address()")
+
+        # Handle tx.origin
+        if "tx.origin" in expr:
+            self._warnings.append(TranspilationWarning(
+                "tx.origin mapped to get_caller() — note: on MultiversX these are always the same, unlike EVM"
+            ))
+            expr = expr.replace("tx.origin", "self.blockchain().get_caller()")
+
+        # Handle type(...).max / type(...).min
+        def replace_type_minmax(m: re.Match) -> str:
+            type_name = m.group(1)
+            bound = m.group(2)  # 'max' or 'min'
+            if type_name == 'uint256':
+                if bound == 'max':
+                    # TODO: true uint256 max is 2^256-1; u64::MAX is a conservative stand-in
+                    return '/* TODO: type(uint256).max — true max is 2^256-1 */ BigUint::from(u64::MAX)'
+                else:  # min
+                    return 'BigUint::zero()'
+            if type_name == 'int256':
+                if bound == 'max':
+                    return '/* TODO: type(int256).max — true max is 2^255-1 */ BigInt::from(i64::MAX)'
+                else:
+                    return '/* TODO: type(int256).min — true min is -(2^255) */ BigInt::from(i64::MIN)'
+            # Generic fallback
+            return m.group(0)
+
+        expr = re.sub(r'\btype\(\s*(u?int\d*)\s*\)\s*\.\s*(max|min)\b', replace_type_minmax, expr)
 
         # Handle simple arithmetic and comparisons (basic cases)
         # This would need to be much more sophisticated for complex expressions
