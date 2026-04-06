@@ -31,7 +31,7 @@ pub trait Governance {
     #[init]
     fn init(&self) {
         self.governor().set(&(self.blockchain().get_caller()));
-        self.proposal_count().set(&(BigUint::from(0u32)));
+        self.proposal_count().set(&(BigUint::zero()));
         self.voting_period().set(&(BigUint::from(86400u32)));
     }
 

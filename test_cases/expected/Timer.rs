@@ -52,8 +52,8 @@ pub trait Timer {
     #[endpoint]
     fn reset(&self) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
-        self.start_time().set(&(BigUint::from(0u32)));
-        self.duration().set(&(BigUint::from(0u32)));
+        self.start_time().set(&(BigUint::zero()));
+        self.duration().set(&(BigUint::zero()));
         self.active().set(&false);
         self.timer_reset_event();
     }

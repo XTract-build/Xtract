@@ -16,7 +16,7 @@ pub trait DoWhileLoop {
         i = i + BigUint::from(1u32);
             if !(i < limit) { break; }
         }
-        let mut i: u64 = BigUint::from(0u32);
+        let mut i: u64 = BigUint::zero();
         self.count().set(&i);
     }
 

@@ -32,7 +32,7 @@ pub trait TokenBridge {
     fn init(&self) {
         self.owner().set(&(self.blockchain().get_caller()));
         self.bridge_fee().set(&(BigUint::from(10u32)));
-        self.total_bridged().set(&(BigUint::from(0u32)));
+        self.total_bridged().set(&(BigUint::zero()));
     }
 
     #[endpoint]

@@ -25,13 +25,13 @@ pub trait AccessControl {
     #[init]
     fn init(&self) {
         self.admin().set(&(self.blockchain().get_caller()));
-        self.operator_count().set(&(BigUint::from(0u32)));
+        self.operator_count().set(&(BigUint::zero()));
     }
 
     #[endpoint]
     fn change_admin(&self, newAdmin: ManagedAddress<Self::Api>) {
         require!(self.blockchain().get_caller() == self.admin().get(), "Not admin");
-        require!(newAdmin != address(BigUint::from(0u32), "Requirement not met");
+        require!(newAdmin != address(BigUint::zero(), "Requirement not met");
         self.admin_changed_event(&self.admin().get(), &newAdmin);
         self.admin().set(&newAdmin);
     }

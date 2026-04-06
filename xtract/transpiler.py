@@ -1288,6 +1288,34 @@ class Transpiler:
             return None
         return m.group(1), expr[m.end():i - 1]
 
+    def _parse_ternary(self, expr: str):
+        """Find ternary operator at depth 0. Returns (condition, then_expr, else_expr) or None."""
+        depth = 0
+        q_pos = None
+        for i, c in enumerate(expr):
+            if c in '([':
+                depth += 1
+            elif c in ')]':
+                depth -= 1
+            elif c == '?' and depth == 0:
+                q_pos = i
+                break
+
+        if q_pos is None:
+            return None
+
+        depth = 0
+        for i in range(q_pos + 1, len(expr)):
+            c = expr[i]
+            if c in '([':
+                depth += 1
+            elif c in ')]':
+                depth -= 1
+            elif c == ':' and depth == 0:
+                return expr[:q_pos].strip(), expr[q_pos + 1:i].strip(), expr[i + 1:].strip()
+
+        return None
+
     def _convert_expression(self, expr: str) -> str:
         """Convert Solidity expressions to MultiversX equivalents"""
         # Inline known library calls before any other transformation
@@ -1297,6 +1325,12 @@ class Transpiler:
         abi_result = self._convert_abi_call(expr)
         if abi_result is not None:
             return abi_result
+
+        # Handle ternary operator (condition ? then_expr : else_expr)
+        ternary = self._parse_ternary(expr.strip())
+        if ternary is not None:
+            cond, then_expr, else_expr = ternary
+            return f'if {self._convert_expression(cond)} {{ {self._convert_expression(then_expr)} }} else {{ {self._convert_expression(else_expr)} }}'
 
         # Handle bare new ContractType(args) used as an expression (without assignment)
         if re.match(r'new\s+\w+\s*\([^)]*\)', expr.strip()):
@@ -1395,6 +1429,8 @@ class Transpiler:
             num_str = match.group(1)
             try:
                 num = int(num_str)
+                if num == 0:
+                    return 'BigUint::zero()'
                 # u64::MAX is 18446744073709551615
                 # Very large numbers (> u64::MAX) should use power operations
                 # For numbers like 1000000000000000000000000 (10^24), use power

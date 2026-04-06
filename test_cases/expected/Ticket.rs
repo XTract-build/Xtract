@@ -33,7 +33,7 @@ pub trait Ticket {
         self.owner().set(&(self.blockchain().get_caller()));
         self.ticket_price().set(&(BigUint::from(100u32)));
         self.total_tickets().set(&(BigUint::from(1000u32)));
-        self.sold_tickets().set(&(BigUint::from(0u32)));
+        self.sold_tickets().set(&(BigUint::zero()));
     }
 
     #[endpoint]

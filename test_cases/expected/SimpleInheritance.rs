@@ -15,7 +15,7 @@ pub trait SimpleInheritance: Ownable {
     #[init]
     fn init(&self) {
         owner = self.blockchain().get_caller();
-        self.value().set(&(BigUint::from(0u32)));
+        self.value().set(&(BigUint::zero()));
     }
 
     #[endpoint]

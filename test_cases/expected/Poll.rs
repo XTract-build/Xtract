@@ -31,7 +31,7 @@ pub trait Poll {
     #[init]
     fn init(&self) {
         self.creator().set(&(self.blockchain().get_caller()));
-        self.option_count().set(&(BigUint::from(0u32)));
+        self.option_count().set(&(BigUint::zero()));
         self.poll_active().set(&false);
     }
 
@@ -59,7 +59,7 @@ pub trait Poll {
         require!(self.blockchain().get_caller() == self.creator().get(), "Not creator");
         require!(self.poll_active().get(), "Poll not active");
         self.poll_active().set(&false);
-        self.poll_closed_event(&BigUint::from(0u32));
+        self.poll_closed_event(&BigUint::zero());
     }
 
     #[view(getVotes)]

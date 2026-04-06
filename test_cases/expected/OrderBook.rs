@@ -31,12 +31,12 @@ pub trait OrderBook {
     #[init]
     fn init(&self) {
         self.owner().set(&(self.blockchain().get_caller()));
-        self.order_count().set(&(BigUint::from(0u32)));
+        self.order_count().set(&(BigUint::zero()));
     }
 
     #[endpoint]
     fn create_order(&self, amount: BigUint<Self::Api>) {
-        require!(amount > BigUint::from(0u32), "Invalid amount");
+        require!(amount > BigUint::zero(), "Invalid amount");
         self.order_count().set(&(self.order_count().get() + BigUint::from(1u32)));
         self.order_owner(&self.order_count().get()).set(self.blockchain().get_caller());
         self.order_amount(&self.order_count().get()).set(amount);

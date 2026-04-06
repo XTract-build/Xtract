@@ -29,7 +29,7 @@ pub trait Claimer {
     fn init(&self) {
         self.owner().set(&(self.blockchain().get_caller()));
         self.claim_amount().set(&(BigUint::from(100u32)));
-        self.total_claimed().set(&(BigUint::from(0u32)));
+        self.total_claimed().set(&(BigUint::zero()));
     }
 
     #[endpoint]

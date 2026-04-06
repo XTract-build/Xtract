@@ -33,7 +33,7 @@ pub trait Subscription {
 
     #[endpoint]
     fn subscribe(&self, duration: BigUint<Self::Api>) {
-        require!(duration > BigUint::from(0u32), "Invalid duration");
+        require!(duration > BigUint::zero(), "Invalid duration");
         let mut expiry: BigUint<Self::Api> = self.blockchain().get_block_timestamp() + duration;
         self.subscription_expiry(&self.blockchain().get_caller()).set(expiry);
         self.is_subscribed(&self.blockchain().get_caller()).set(true);

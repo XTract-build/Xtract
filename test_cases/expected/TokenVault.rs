@@ -21,7 +21,7 @@ pub trait TokenVault {
 
     #[endpoint]
     fn deposit(&self, amount: BigUint<Self::Api>) {
-        require!(amount > BigUint::from(0u32), "Amount must be positive");
+        require!(amount > BigUint::zero(), "Amount must be positive");
         self.balances(&self.blockchain().get_caller()).set(self.balances(&self.blockchain().get_caller()) + amount.clone());
         self.total_deposited().set(&(self.total_deposited().get() + amount.clone()));
         self.deposit_event(&self.blockchain().get_caller(), &amount.clone());

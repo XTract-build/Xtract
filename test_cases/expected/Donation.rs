@@ -29,12 +29,12 @@ pub trait Donation {
     fn init(&self) {
         self.owner().set(&(self.blockchain().get_caller()));
         self.beneficiary().set(&(self.blockchain().get_caller()));
-        self.total_donations().set(&(BigUint::from(0u32)));
+        self.total_donations().set(&(BigUint::zero()));
     }
 
     #[endpoint]
     fn donate(&self, amount: BigUint<Self::Api>) {
-        require!(amount > BigUint::from(0u32), "Invalid amount");
+        require!(amount > BigUint::zero(), "Invalid amount");
         self.donations(&self.blockchain().get_caller()).set(self.donations(&self.blockchain().get_caller()) + amount.clone());
         self.total_donations().set(&(self.total_donations().get() + amount.clone()));
         self.donation_received_event(&self.blockchain().get_caller(), &amount.clone());
@@ -51,7 +51,7 @@ pub trait Donation {
     #[endpoint]
     fn set_beneficiary(&self, newBeneficiary: ManagedAddress<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
-        require!(newBeneficiary != address(BigUint::from(0u32), "Requirement not met");
+        require!(newBeneficiary != address(BigUint::zero(), "Requirement not met");
         self.beneficiary_changed_event(&self.beneficiary().get(), &newBeneficiary);
         self.beneficiary().set(&newBeneficiary);
     }

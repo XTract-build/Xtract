@@ -32,7 +32,7 @@ pub trait Proxy {
     fn initialize(&self, impl: ManagedAddress<Self::Api>) {
         require!(self.blockchain().get_caller() == self.admin().get(), "Not admin");
         require!(!self.initialized().get(), "Already initialized");
-        require!(impl != address(BigUint::from(0u32), "Requirement not met");
+        require!(impl != address(BigUint::zero(), "Requirement not met");
         self.implementation().set(&impl);
         self.initialized().set(&true);
         self.initialized_event();
@@ -41,7 +41,7 @@ pub trait Proxy {
     #[endpoint]
     fn upgrade_to(&self, newImpl: ManagedAddress<Self::Api>) {
         require!(self.blockchain().get_caller() == self.admin().get(), "Not admin");
-        require!(newImpl != address(BigUint::from(0u32), "Requirement not met");
+        require!(newImpl != address(BigUint::zero(), "Requirement not met");
         self.implementation_updated_event(&self.implementation().get(), &newImpl);
         self.implementation().set(&newImpl);
     }
@@ -49,7 +49,7 @@ pub trait Proxy {
     #[endpoint]
     fn change_admin(&self, newAdmin: ManagedAddress<Self::Api>) {
         require!(self.blockchain().get_caller() == self.admin().get(), "Not admin");
-        require!(newAdmin != address(BigUint::from(0u32), "Requirement not met");
+        require!(newAdmin != address(BigUint::zero(), "Requirement not met");
         self.admin_changed_event(&self.admin().get(), &newAdmin);
         self.admin().set(&newAdmin);
     }

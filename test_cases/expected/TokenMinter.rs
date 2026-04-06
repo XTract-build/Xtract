@@ -42,14 +42,14 @@ pub trait TokenMinter {
         self.owner().set(&(self.blockchain().get_caller()));
         self.name().set(&"MintableToken");
         self.symbol().set(&"MTK");
-        self.total_supply().set(&(BigUint::from(0u32)));
+        self.total_supply().set(&(BigUint::zero()));
         self.minters(&self.blockchain().get_caller()).set(true);
     }
 
     #[endpoint]
     fn mint(&self, to: ManagedAddress<Self::Api>, amount: BigUint<Self::Api>) {
         require!(self.minters(&self.blockchain().get_caller()), "Not minter");
-        require!(to != address(BigUint::from(0u32), "Requirement not met");
+        require!(to != address(BigUint::zero(), "Requirement not met");
         self.balances(&to).set(self.balances(&to).get() + amount.clone());
         self.total_supply().set(&(self.total_supply().get() + amount.clone()));
         self.minted_event(&to, &amount.clone());

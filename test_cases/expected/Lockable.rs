@@ -29,7 +29,7 @@ pub trait Lockable {
     fn init(&self) {
         self.owner().set(&(self.blockchain().get_caller()));
         self.locked().set(&false);
-        self.value().set(&(BigUint::from(0u32)));
+        self.value().set(&(BigUint::zero()));
     }
 
     #[endpoint]

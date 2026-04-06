@@ -36,7 +36,7 @@ pub trait Crowdfunding {
         self.count().set(&(self.count().get() + BigUint::from(1u32)));
         self.campaign_creator().set(&(self.blockchain().get_caller()));
         self.campaign_goal().set(&goal);
-        self.campaign_pledged().set(&(BigUint::from(0u32)));
+        self.campaign_pledged().set(&(BigUint::zero()));
         self.campaign_claimed().set(&false);
         self.campaign_created_event(&(self.count().get() - BigUint::from(1u32)), &self.blockchain().get_caller(), &goal.clone());
         return self.count().get() - BigUint::from(1u32);

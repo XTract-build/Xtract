@@ -25,7 +25,7 @@ pub trait Points {
     #[init]
     fn init(&self) {
         self.admin().set(&(self.blockchain().get_caller()));
-        self.total_points().set(&(BigUint::from(0u32)));
+        self.total_points().set(&(BigUint::zero()));
     }
 
     #[endpoint]

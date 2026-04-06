@@ -39,7 +39,7 @@ pub trait NFTMarketplace {
         self.next_token_id().set(&(self.next_token_id().get() + BigUint::from(1u32)));
         self.current_token_id().set(&(self.next_token_id().get() - BigUint::from(1u32)));
         self.current_owner().set(&(self.blockchain().get_caller()));
-        self.current_price().set(&(BigUint::from(0u32)));
+        self.current_price().set(&(BigUint::zero()));
         self.current_for_sale().set(&false);
         self.nft_created_event(&self.current_token_id().get(), &self.blockchain().get_caller());
         return self.current_token_id().get();

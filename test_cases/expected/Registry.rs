@@ -24,7 +24,7 @@ pub trait Registry {
     #[endpoint]
     fn register(&self, memory: ManagedBuffer<Self::Api>, addr: ManagedAddress<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
-        require!(addr != address(BigUint::from(0u32), "Requirement not met");
+        require!(addr != address(BigUint::zero(), "Requirement not met");
         self.registry(&name).set(addr);
         self.registered_event(&name, &addr);
     }

@@ -27,14 +27,14 @@ pub trait Counter {
 
     #[endpoint]
     fn decrement(&self) {
-        require!(self.count().get() > BigUint::from(0u32), "Counter underflow");
+        require!(self.count().get() > BigUint::zero(), "Counter underflow");
         self.count().set(&(self.count().get() - BigUint::from(1u32)));
         self.count_decremented_event(&self.count().get());
     }
 
     #[endpoint]
     fn reset(&self) {
-        self.count().set(&(BigUint::from(0u32)));
+        self.count().set(&(BigUint::zero()));
         self.count_reset_event();
     }
 

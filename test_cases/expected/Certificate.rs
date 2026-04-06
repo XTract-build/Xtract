@@ -31,13 +31,13 @@ pub trait Certificate {
     #[init]
     fn init(&self) {
         self.issuer().set(&(self.blockchain().get_caller()));
-        self.certificate_count().set(&(BigUint::from(0u32)));
+        self.certificate_count().set(&(BigUint::zero()));
     }
 
     #[endpoint]
     fn issue_certificate(&self, recipient: ManagedAddress<Self::Api>) {
         require!(self.blockchain().get_caller() == self.issuer().get(), "Not issuer");
-        require!(recipient != address(BigUint::from(0u32), "Requirement not met");
+        require!(recipient != address(BigUint::zero(), "Requirement not met");
         self.certificate_count().set(&(self.certificate_count().get() + BigUint::from(1u32)));
         self.certificate_owner(&self.certificate_count().get()).set(recipient);
         self.certificate_valid(&self.certificate_count().get()).set(true);

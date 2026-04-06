@@ -34,7 +34,7 @@ pub trait FeeCollector {
 
     #[endpoint]
     fn collect_fee(&self, amount: BigUint<Self::Api>) {
-        require!(amount > BigUint::from(0u32), "Invalid amount");
+        require!(amount > BigUint::zero(), "Invalid amount");
         let mut fee: BigUint<Self::Api> = amount * self.fee_percent().get() / BigUint::from(10000u32);
         self.total_collected().set(&(self.total_collected().get() + fee));
         self.fee_collected_event(&self.blockchain().get_caller(), &amount.clone(), &fee);
@@ -51,7 +51,7 @@ pub trait FeeCollector {
     #[endpoint]
     fn set_treasury(&self, newTreasury: ManagedAddress<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
-        require!(newTreasury != address(BigUint::from(0u32), "Requirement not met");
+        require!(newTreasury != address(BigUint::zero(), "Requirement not met");
         self.treasury_changed_event(&self.treasury().get(), &newTreasury);
         self.treasury().set(&newTreasury);
     }

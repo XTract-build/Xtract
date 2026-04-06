@@ -33,7 +33,7 @@ pub trait Deposit {
         self.owner().set(&(self.blockchain().get_caller()));
         self.min_deposit().set(&(BigUint::from(100u32)));
         self.max_deposit().set(&(BigUint::from(10000u32)));
-        self.total_deposits().set(&(BigUint::from(0u32)));
+        self.total_deposits().set(&(BigUint::zero()));
     }
 
     #[endpoint]

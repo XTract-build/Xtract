@@ -647,6 +647,23 @@ def test_storage_mapper_gets_get_in_expression():
     assert "self.admin().get()" in result
 
 
+def test_ternary_operator_transpilation():
+    """Test that ternary expressions are transpiled to Rust if-else expressions"""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+
+    contract FeeCalc {
+        function calc(uint256 amount) public pure returns (uint256) {
+            uint256 fee = amount > 1000 ? amount / 100 : 0;
+            return fee;
+        }
+    }
+    """
+    result = Transpiler().convert(sol)
+    assert "let mut fee: BigUint<Self::Api> = if amount > BigUint::from(1000u32) { amount / BigUint::from(100u32) } else { BigUint::zero() };" in result
+
+
 # Count test to verify we have 50 test cases
 def test_fifty_test_cases():
     """Verify we have at least 50 test cases"""

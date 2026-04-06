@@ -31,7 +31,7 @@ pub trait OnlyOwner {
     #[endpoint]
     fn transfer_ownership(&self, newOwner: ManagedAddress<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
-        require!(newOwner != address(BigUint::from(0u32), "Requirement not met");
+        require!(newOwner != address(BigUint::zero(), "Requirement not met");
         self.ownership_transferred_event(&owner, &newOwner);
         self.owner().set(&newOwner);
     }

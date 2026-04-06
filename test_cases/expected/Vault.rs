@@ -39,7 +39,7 @@ pub trait Vault {
 
     #[endpoint]
     fn deposit(&self, amount: BigUint<Self::Api>) {
-        require!(amount > BigUint::from(0u32), "Invalid amount");
+        require!(amount > BigUint::zero(), "Invalid amount");
         self.balances(&self.blockchain().get_caller()).set(self.balances(&self.blockchain().get_caller()) + amount.clone());
         self.deposited_event(&self.blockchain().get_caller(), &amount.clone());
     }
@@ -55,18 +55,18 @@ pub trait Vault {
 
     #[endpoint]
     fn complete_withdrawal(&self) {
-        require!(self.pending_withdrawals(&self.blockchain().get_caller()) > BigUint::from(0u32), "No pending withdrawal");
+        require!(self.pending_withdrawals(&self.blockchain().get_caller()) > BigUint::zero(), "No pending withdrawal");
         require!(self.blockchain().get_block_timestamp() >= self.withdrawal_time(&self.blockchain().get_caller()), "Delay not passed");
         let mut amount: BigUint<Self::Api> = self.pending_withdrawals(&self.blockchain().get_caller());
-        self.pending_withdrawals(&self.blockchain().get_caller()).set(BigUint::from(0u32));
+        self.pending_withdrawals(&self.blockchain().get_caller()).set(BigUint::zero());
         self.withdrawal_completed_event(&self.blockchain().get_caller(), &amount.clone());
     }
 
     #[endpoint]
     fn cancel_withdrawal(&self) {
-        require!(self.pending_withdrawals(&self.blockchain().get_caller()) > BigUint::from(0u32), "No pending withdrawal");
+        require!(self.pending_withdrawals(&self.blockchain().get_caller()) > BigUint::zero(), "No pending withdrawal");
         let mut amount: BigUint<Self::Api> = self.pending_withdrawals(&self.blockchain().get_caller());
-        self.pending_withdrawals(&self.blockchain().get_caller()).set(BigUint::from(0u32));
+        self.pending_withdrawals(&self.blockchain().get_caller()).set(BigUint::zero());
         self.balances(&self.blockchain().get_caller()).set(self.balances(&self.blockchain().get_caller()) + amount.clone());
         self.withdrawal_cancelled_event(&self.blockchain().get_caller());
     }

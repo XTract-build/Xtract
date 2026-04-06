@@ -28,7 +28,7 @@ pub trait Auction {
     #[init]
     fn init(&self) {
         self.owner().set(&(self.blockchain().get_caller()));
-        self.highest_bid().set(&(BigUint::from(0u32)));
+        self.highest_bid().set(&(BigUint::zero()));
         self.ended().set(&false);
     }
 

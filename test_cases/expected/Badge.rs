@@ -31,7 +31,7 @@ pub trait Badge {
     #[init]
     fn init(&self) {
         self.admin().set(&(self.blockchain().get_caller()));
-        self.badge_count().set(&(BigUint::from(0u32)));
+        self.badge_count().set(&(BigUint::zero()));
     }
 
     #[endpoint]

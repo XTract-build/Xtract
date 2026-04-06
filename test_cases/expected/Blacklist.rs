@@ -22,7 +22,7 @@ pub trait Blacklist {
     #[init]
     fn init(&self) {
         self.owner().set(&(self.blockchain().get_caller()));
-        self.blacklist_count().set(&(BigUint::from(0u32)));
+        self.blacklist_count().set(&(BigUint::zero()));
     }
 
     #[endpoint]

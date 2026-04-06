@@ -34,7 +34,7 @@ pub trait Referral {
     #[endpoint]
     fn register(&self, referrer: ManagedAddress<Self::Api>) {
         require!(referrer != self.blockchain().get_caller(), "Cannot refer self");
-        require!(self.referrers(&self.blockchain().get_caller()) == address(BigUint::from(0u32), "Requirement not met");
+        require!(self.referrers(&self.blockchain().get_caller()) == address(BigUint::zero(), "Requirement not met");
         self.referrers(&self.blockchain().get_caller()).set(referrer);
         self.referral_count(&referrer).set(self.referral_count(&referrer).get() + BigUint::from(1u32));
         self.referral_registered_event(&self.blockchain().get_caller(), &referrer);

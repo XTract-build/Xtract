@@ -25,7 +25,7 @@ pub trait Leaderboard {
     #[init]
     fn init(&self) {
         self.owner().set(&(self.blockchain().get_caller()));
-        self.highest_score().set(&(BigUint::from(0u32)));
+        self.highest_score().set(&(BigUint::zero()));
     }
 
     #[endpoint]

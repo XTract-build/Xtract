@@ -28,14 +28,14 @@ pub trait Vesting {
     #[init]
     fn init(&self) {
         self.beneficiary().set(&(self.blockchain().get_caller()));
-        self.released().set(&(BigUint::from(0u32)));
+        self.released().set(&(BigUint::zero()));
     }
 
     #[endpoint]
     fn create_schedule(&self, _beneficiary: ManagedAddress<Self::Api>, _amount: BigUint<Self::Api>, _duration: BigUint<Self::Api>) {
-        require!(_beneficiary != address(BigUint::from(0u32), "Requirement not met");
-        require!(_amount > BigUint::from(0u32), "Invalid amount");
-        require!(_duration > BigUint::from(0u32), "Invalid duration");
+        require!(_beneficiary != address(BigUint::zero(), "Requirement not met");
+        require!(_amount > BigUint::zero(), "Invalid amount");
+        require!(_duration > BigUint::zero(), "Invalid duration");
         self.beneficiary().set(&_beneficiary);
         self.total_amount().set(&_amount);
         self.duration().set(&_duration);
@@ -47,7 +47,7 @@ pub trait Vesting {
     fn release(&self) {
         require!(self.blockchain().get_caller() == self.beneficiary().get(), "Not beneficiary");
         let mut releasable: BigUint<Self::Api> = self.total_amount().get() - self.released().get();
-        require!(releasable > BigUint::from(0u32), "Nothing to release");
+        require!(releasable > BigUint::zero(), "Nothing to release");
         self.released().set(&(self.released().get() + releasable));
         self.tokens_released_event(&self.beneficiary().get(), &releasable);
     }

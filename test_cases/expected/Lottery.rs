@@ -34,9 +34,9 @@ pub trait Lottery {
     #[init]
     fn init(&self) {
         self.owner().set(&(self.blockchain().get_caller()));
-        self.ticket_price().set(&(BigUint::from(0u32)));
-        self.ticket_count().set(&(BigUint::from(0u32)));
-        self.prize_pool().set(&(BigUint::from(0u32)));
+        self.ticket_price().set(&(BigUint::zero()));
+        self.ticket_count().set(&(BigUint::zero()));
+        self.prize_pool().set(&(BigUint::zero()));
         self.lottery_open().set(&false);
     }
 

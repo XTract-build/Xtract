@@ -32,7 +32,7 @@ pub trait Membership {
     fn init(&self) {
         self.owner().set(&(self.blockchain().get_caller()));
         self.membership_fee().set(&(BigUint::from(100u32)));
-        self.member_count().set(&(BigUint::from(0u32)));
+        self.member_count().set(&(BigUint::zero()));
     }
 
     #[endpoint]

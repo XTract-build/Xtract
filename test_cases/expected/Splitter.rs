@@ -31,15 +31,15 @@ pub trait Splitter {
     #[init]
     fn init(&self) {
         self.owner().set(&(self.blockchain().get_caller()));
-        self.split_count().set(&(BigUint::from(0u32)));
-        self.total_shares().set(&(BigUint::from(0u32)));
+        self.split_count().set(&(BigUint::zero()));
+        self.total_shares().set(&(BigUint::zero()));
     }
 
     #[endpoint]
     fn add_recipient(&self, _recipient: ManagedAddress<Self::Api>, _share: BigUint<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
-        require!(_recipient != address(BigUint::from(0u32), "Requirement not met");
-        require!(_share > BigUint::from(0u32), "Invalid share");
+        require!(_recipient != address(BigUint::zero(), "Requirement not met");
+        require!(_share > BigUint::zero(), "Invalid share");
         self.split_count().set(&(self.split_count().get() + BigUint::from(1u32)));
         self.recipient(&self.split_count().get()).set(_recipient);
         self.share(&self.split_count().get()).set(_share);
@@ -50,17 +50,17 @@ pub trait Splitter {
     #[endpoint]
     fn remove_recipient(&self, index: BigUint<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
-        require!(self.recipient(&index).get() != address(BigUint::from(0u32), "Requirement not met");
+        require!(self.recipient(&index).get() != address(BigUint::zero(), "Requirement not met");
         self.total_shares().set(&(self.total_shares().get() - self.share(&index).get()));
         self.recipient(&index).set(ManagedAddress::zero());
-        self.share(&index).set(BigUint::from(0u32));
+        self.share(&index).set(BigUint::zero());
         self.recipient_removed_event(&index);
     }
 
     #[endpoint]
     fn split(&self, amount: BigUint<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
-        require!(self.total_shares().get() > BigUint::from(0u32), "No recipients");
+        require!(self.total_shares().get() > BigUint::zero(), "No recipients");
         self.split_executed_event(&amount.clone());
     }
 

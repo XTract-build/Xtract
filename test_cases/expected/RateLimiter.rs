@@ -46,7 +46,7 @@ pub trait RateLimiter {
     #[endpoint]
     fn reset_limit(&self, user: ManagedAddress<Self::Api>) {
         require!(self.blockchain().get_caller() == owner, "Not owner");
-        self.action_count(&user).set(BigUint::from(0u32));
+        self.action_count(&user).set(BigUint::zero());
     }
 
     #[endpoint]
