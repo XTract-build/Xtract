@@ -202,6 +202,7 @@ cat MyStorage.rs
 - Function modifiers — full pre/post body inlining, including `nonReentrant`
 - Basic inheritance (`contract A is B, C`)
 - `require` / `revert`, if/else, for loops, while loops, do-while loops
+- Ternary expressions (`cond ? a : b` → `if cond { a } else { b }`)
 - `delete var` → `.clear()`, `unchecked { }` passthrough
 - `SafeMath` / `using-for` → inlined arithmetic operators
 

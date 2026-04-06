@@ -212,7 +212,8 @@ const { contractAddress, explorerUrl } = await deployer.deploy({
 - Public/private/view/payable functions
 - Function modifiers (`onlyOwner`, custom)
 - Basic inheritance (`contract A is B, C`)
-- `require` / `revert`, if/else, for loops, while loops
+- `require` / `revert`, if/else, for loops, while loops, do-while loops
+- Ternary expressions (`cond ? a : b` → `if cond { a } else { b }`)
 - Automatic `#[payable("EGLD")]` annotation
 
 ### Requires manual review
