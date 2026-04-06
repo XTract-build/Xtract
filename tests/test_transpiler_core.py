@@ -949,3 +949,91 @@ def test_tx_origin_maps_to_caller_with_warning():
     result = t._convert_expression("tx.origin")
     assert "get_caller()" in result, f"Got: {result!r}"
     assert any("tx.origin" in w.message for w in t._warnings), "Expected warning about tx.origin"
+
+
+def test_msg_value_maps_to_egld_value():
+    """Test that msg.value in require() is rewritten to self.call_value().egld_value()"""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+
+    contract Shop {
+        uint256 public price;
+
+        function buy() public payable {
+            require(msg.value >= price, "Insufficient payment");
+        }
+    }
+    """
+    result = Transpiler().convert(sol)
+    assert "self.call_value().egld_value()" in result, (
+        "Expected msg.value to be converted to self.call_value().egld_value()"
+    )
+    assert "msg.value" not in result, "msg.value should not appear in output"
+    assert "require!" in result, "Expected require! macro in output"
+
+
+def test_msg_sender_maps_to_get_caller():
+    """Test that msg.sender is rewritten to self.blockchain().get_caller()"""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+
+    contract Owned {
+        address public owner;
+
+        constructor() {
+            owner = msg.sender;
+        }
+    }
+    """
+    result = Transpiler().convert(sol)
+    assert "self.blockchain().get_caller()" in result, (
+        "Expected msg.sender to be converted to self.blockchain().get_caller()"
+    )
+    assert "msg.sender" not in result, "msg.sender should not appear in output"
+
+
+def test_msg_data_emits_warning_and_stub():
+    """Test that msg.data emits a TranspilationWarning and a ManagedBuffer stub"""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+
+    contract DataReader {
+        function getCallData() public view returns (bytes memory) {
+            return msg.data;
+        }
+    }
+    """
+    transpiler = Transpiler()
+    result = transpiler.convert(sol)
+
+    warning_messages = [w.message for w in transpiler._warnings]
+    assert any("msg.data" in msg for msg in warning_messages), (
+        "Expected a TranspilationWarning about msg.data"
+    )
+    assert "ManagedBuffer" in result, "Expected ManagedBuffer stub in output"
+    assert "TODO" in result, "Expected TODO stub in output"
+
+
+def test_msg_sig_emits_warning_and_stub():
+    """Test that msg.sig emits a TranspilationWarning and a TODO stub"""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+
+    contract SigReader {
+        function getSelector() public view returns (bytes4) {
+            return msg.sig;
+        }
+    }
+    """
+    transpiler = Transpiler()
+    result = transpiler.convert(sol)
+
+    warning_messages = [w.message for w in transpiler._warnings]
+    assert any("msg.sig" in msg for msg in warning_messages), (
+        "Expected a TranspilationWarning about msg.sig"
+    )
+    assert "TODO" in result, "Expected a TODO stub in output"

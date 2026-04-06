@@ -1456,6 +1456,23 @@ class Transpiler:
         # Handle msg.sender
         expr = expr.replace("msg.sender", "self.blockchain().get_caller()")
 
+        # Handle msg.value
+        expr = expr.replace("msg.value", "self.call_value().egld_value()")
+
+        # Handle msg.data (not directly mappable — emit TODO stub with warning)
+        if "msg.data" in expr:
+            self._warnings.append(TranspilationWarning(
+                "msg.data has no direct MultiversX equivalent — manual conversion to ManagedBuffer required"
+            ))
+            expr = expr.replace("msg.data", "{ /* TODO: msg.data → ManagedBuffer — manual conversion required */ ManagedBuffer::new() }")
+
+        # Handle msg.sig (function selector — not applicable in MultiversX)
+        if "msg.sig" in expr:
+            self._warnings.append(TranspilationWarning(
+                "msg.sig (function selector) has no MultiversX equivalent — remove or redesign this logic"
+            ))
+            expr = expr.replace("msg.sig", "{ /* TODO: msg.sig has no MultiversX equivalent */ ManagedBuffer::new() }")
+
         # Handle block.timestamp / now (Solidity alias)
         expr = expr.replace("block.timestamp", "self.blockchain().get_block_timestamp()")
         expr = expr.replace("now", "self.blockchain().get_block_timestamp()")
@@ -1492,6 +1509,7 @@ class Transpiler:
             return m.group(0)
 
         expr = re.sub(r'\btype\(\s*(u?int\d*)\s*\)\s*\.\s*(max|min)\b', replace_type_minmax, expr)
+
 
         # Handle simple arithmetic and comparisons (basic cases)
         # This would need to be much more sophisticated for complex expressions
