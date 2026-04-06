@@ -336,7 +336,7 @@ pub trait SimpleStorage {
 
 1. **Start simple** — validate transpiler output on basic contracts before migrating complex DeFi logic.
 2. **Always review output** — check generated function bodies, especially around arithmetic and state mutations.
-3. **Payment handling** — Solidity's `msg.value` / ether model maps to `#[payable("EGLD")]` in MultiversX; review payable functions carefully.
+3. **Payment handling** — Solidity's `msg.value` maps to `self.call_value().egld_value()` in MultiversX; payable functions are annotated with `#[payable("EGLD")]` automatically. `msg.sender` maps to `self.blockchain().get_caller()`. `msg.data` and `msg.sig` have no direct equivalent and emit TODO stubs with warnings — these require manual conversion.
 4. **Test on devnet first** — use `--network devnet` until you're confident in the contract behaviour.
 5. **Keep your mnemonic** — `xtract wallet create` shows it once; there is no recovery path.
 

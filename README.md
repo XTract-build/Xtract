@@ -199,6 +199,8 @@ cat MyStorage.rs
 - Events with indexed parameters
 - Custom errors, structs
 - Functions (public, private, view, payable)
+- `msg.value` → `self.call_value().egld_value()`
+- `msg.sender` → `self.blockchain().get_caller()`
 - Function modifiers — full pre/post body inlining, including `nonReentrant`
 - Basic inheritance (`contract A is B, C`)
 - `require` / `revert`, if/else, for loops, while loops, do-while loops

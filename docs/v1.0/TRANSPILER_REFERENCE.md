@@ -47,6 +47,10 @@ Full feature coverage for the v1.0 transpiler (`xtract/transpiler.py`).
 | `nonReentrant` | `locked.set(true)` / `locked.set(false)` around body | |
 | Function visibility | `pub` / private / `#[view]` / `#[endpoint]` | |
 | Payable functions | `#[payable("EGLD")]` | |
+| `msg.sender` | `self.blockchain().get_caller()` | |
+| `msg.value` | `self.call_value().egld_value()` | payable function must use `#[payable("EGLD")]` |
+| `msg.data` | `ManagedBuffer::new()` stub | emits `TranspilationWarning`; manual conversion required |
+| `msg.sig` | TODO stub | emits `TranspilationWarning`; no MultiversX equivalent |
 | Constructor | `#[init]` fn with parameters | parameters mapped via type table |
 | Inheritance (`is A`) | supertrait | |
 | `require()` | `require!()` | |
