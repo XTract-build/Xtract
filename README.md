@@ -194,7 +194,7 @@ cat MyStorage.rs
 ## Supported Solidity Features
 
 ### Fully Supported
-- Contract declarations, constructors, state variables
+- Contract declarations, constructors (with parameters) mapped to `#[init]`, state variables
 - Single and nested mappings
 - Events with indexed parameters
 - Custom errors, structs

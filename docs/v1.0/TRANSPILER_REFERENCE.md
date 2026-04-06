@@ -47,7 +47,7 @@ Full feature coverage for the v1.0 transpiler (`xtract/transpiler.py`).
 | `nonReentrant` | `locked.set(true)` / `locked.set(false)` around body | |
 | Function visibility | `pub` / private / `#[view]` / `#[endpoint]` | |
 | Payable functions | `#[payable("EGLD")]` | |
-| Constructor | `#[init]` | |
+| Constructor | `#[init]` fn with parameters | parameters mapped via type table |
 | Inheritance (`is A`) | supertrait | |
 | `require()` | `require!()` | |
 | `revert()` | `sc_panic!()` | |
@@ -180,6 +180,29 @@ pub trait SimpleStorage {
 ```
 
 ---
+
+## Constructor Parameter Mapping
+
+Constructor parameters are emitted in the `#[init]` function signature using the same type mapping as regular functions.
+
+**Solidity:**
+```solidity
+constructor(address _owner, uint256 _initialSupply) {
+    owner = _owner;
+    totalSupply = _initialSupply;
+}
+```
+
+**Generated Rust:**
+```rust
+#[init]
+fn init(&self, _owner: ManagedAddress<Self::Api>, _initialSupply: BigUint<Self::Api>) {
+    self.owner().set(_owner);
+    self.total_supply().set(_initialSupply);
+}
+```
+
+Parameter names are preserved as-is (leading underscores included). Types are converted via the standard type mapping table (see [Type Mapping](#type-mapping)).
 
 ## Modifier Inlining
 

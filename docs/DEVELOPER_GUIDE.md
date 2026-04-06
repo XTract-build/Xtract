@@ -229,6 +229,21 @@ const { contractAddress, explorerUrl } = await deployer.deploy({
 - `nonReentrant` modifier → full lock/unlock wrapper inlined
 - `delete var` → `.clear()`
 - `unchecked { }` → passthrough with comment
+- Constructor parameters → emitted in `#[init]` signature with type mapping
+
+### Constructor parameter mapping
+
+Constructor parameters are carried through to the `#[init]` function using the same type-mapping rules as regular function parameters:
+
+| Solidity type | MultiversX Rust type |
+|---|---|
+| `address` | `ManagedAddress<Self::Api>` |
+| `uint256` | `BigUint<Self::Api>` |
+| `uint128` / `uint64` / ... | `u128` / `u64` / ... |
+| `bool` | `bool` |
+| `bytes32` | `ManagedByteArray<Self::Api, 32>` |
+
+Example: `constructor(address _owner, uint256 _supply)` becomes `fn init(&self, _owner: ManagedAddress<Self::Api>, _supply: BigUint<Self::Api>)`.
 
 ## Example: SimpleStorage
 
