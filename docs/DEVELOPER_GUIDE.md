@@ -220,8 +220,11 @@ const { contractAddress, explorerUrl } = await deployer.deploy({
 - Complex arithmetic expressions
 - External contract calls
 
+### Cleanly stripped with TODO markers
+- **Inline assembly** — replaced with `// TODO: inline assembly removed — no MultiversX equivalent`. Requires manual rewrite using Rust/SC APIs.
+- **Try-catch blocks** — replaced with `// TODO: try-catch block removed — implement error handling manually`. Replace with async callbacks or `require!` guards.
+
 ### Not yet supported
-- Inline assembly, try-catch
 - Libraries, diamond inheritance
 
 ### Supported since v1.0

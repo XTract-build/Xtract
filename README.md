@@ -210,9 +210,11 @@ cat MyStorage.rs
 - Complex arithmetic expressions
 - External contract calls
 
+### Cleanly Stripped with TODO Markers
+- **Inline assembly** — replaced with `// TODO: inline assembly removed — no MultiversX equivalent`
+- **Try-catch blocks** — replaced with `// TODO: try-catch block removed — implement error handling manually`
+
 ### Not Yet Supported
-- Inline assembly
-- Try-catch blocks
 - Libraries
 - Diamond inheritance
 

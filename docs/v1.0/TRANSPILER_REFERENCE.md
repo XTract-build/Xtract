@@ -70,8 +70,8 @@ Full feature coverage for the v1.0 transpiler (`xtract/transpiler.py`).
 
 | Feature | Reason | Workaround |
 |---|---|---|
-| `try-catch` | No MultiversX equivalent | Use async callbacks |
-| Inline assembly | No EVM on MultiversX | Rewrite using Rust/SC APIs |
+| `try-catch` | No MultiversX equivalent | Stripped before parsing; a `// TODO: try-catch block removed — implement error handling manually` comment is emitted in its place. Replace it with async callbacks or `require!` guards. |
+| Inline assembly | No EVM on MultiversX | Stripped before parsing; a `// TODO: inline assembly removed — no MultiversX equivalent` comment is emitted in its place. Rewrite using Rust/SC APIs. |
 | `selfdestruct` | No equivalent | Design contracts without it |
 | `delegatecall` | No equivalent | Use composability patterns |
 | `abi.encodeWithSelector` | Partial | Manual `ManagedBuffer` |
