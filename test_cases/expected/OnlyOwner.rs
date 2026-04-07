@@ -23,16 +23,16 @@ pub trait OnlyOwner {
 
     #[endpoint]
     fn set_value(&self, newValue: BigUint<Self::Api>) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
         self.value().set(&newValue);
         self.value_changed_event(&newValue);
     }
 
     #[endpoint]
     fn transfer_ownership(&self, newOwner: ManagedAddress<Self::Api>) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
-        require!(newOwner != address(BigUint::zero(), "Requirement not met");
-        self.ownership_transferred_event(&owner, &newOwner);
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
+        require!(newOwner != ManagedAddress::zero(), "Invalid address");
+        self.ownership_transferred_event(&self.owner().get(), &newOwner);
         self.owner().set(&newOwner);
     }
 

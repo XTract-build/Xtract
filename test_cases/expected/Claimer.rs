@@ -43,7 +43,7 @@ pub trait Claimer {
 
     #[endpoint]
     fn set_claim_amount(&self, newAmount: BigUint<Self::Api>) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
         self.claim_amount_updated_event(&self.claim_amount().get(), &newAmount);
         self.claim_amount().set(&newAmount);
     }

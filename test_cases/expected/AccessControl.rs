@@ -31,7 +31,7 @@ pub trait AccessControl {
     #[endpoint]
     fn change_admin(&self, newAdmin: ManagedAddress<Self::Api>) {
         require!(self.blockchain().get_caller() == self.admin().get(), "Not admin");
-        require!(newAdmin != address(BigUint::zero(), "Requirement not met");
+        require!(newAdmin != ManagedAddress::zero(), "Invalid admin");
         self.admin_changed_event(&self.admin().get(), &newAdmin);
         self.admin().set(&newAdmin);
     }

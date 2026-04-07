@@ -34,7 +34,7 @@ pub trait Auction {
 
     #[endpoint]
     fn start_auction(&self, duration: BigUint<Self::Api>) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
         require!(!self.ended().get(), "Auction ended");
         self.auction_end_time().set(&(self.blockchain().get_block_timestamp() + duration));
     }
@@ -50,7 +50,7 @@ pub trait Auction {
 
     #[endpoint]
     fn end_auction(&self) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
         require!(!self.ended().get(), "Already ended");
         self.ended().set(&true);
         self.auction_ended_event(&self.highest_bidder().get(), &self.highest_bid().get());

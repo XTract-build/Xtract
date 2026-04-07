@@ -37,7 +37,7 @@ pub trait RewardPool {
 
     #[endpoint]
     fn add_rewards(&self, amount: BigUint<Self::Api>) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
         self.total_rewards().set(&(self.total_rewards().get() + amount.clone()));
         self.reward_added_event(&amount.clone());
     }
@@ -53,7 +53,7 @@ pub trait RewardPool {
 
     #[endpoint]
     fn update_reward_rate(&self, newRate: BigUint<Self::Api>) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
         self.reward_rate_updated_event(&self.reward_rate().get(), &newRate);
         self.reward_rate().set(&newRate);
     }

@@ -42,7 +42,7 @@ pub trait Lottery {
 
     #[endpoint]
     fn open_lottery(&self, price: BigUint<Self::Api>) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
         require!(!self.lottery_open().get(), "Already open");
         self.ticket_price().set(&price);
         self.lottery_open().set(&true);
@@ -59,7 +59,7 @@ pub trait Lottery {
 
     #[endpoint]
     fn close_lottery(&self) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
         require!(self.lottery_open().get(), "Already closed");
         self.lottery_open().set(&false);
         self.lottery_closed_event();

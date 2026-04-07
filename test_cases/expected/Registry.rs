@@ -23,15 +23,15 @@ pub trait Registry {
 
     #[endpoint]
     fn register(&self, memory: ManagedBuffer<Self::Api>, addr: ManagedAddress<Self::Api>) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
-        require!(addr != address(BigUint::zero(), "Requirement not met");
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
+        require!(addr != ManagedAddress::zero(), "Invalid address");
         self.registry(&name).set(addr);
         self.registered_event(&name, &addr);
     }
 
     #[endpoint]
     fn unregister(&self, memory: ManagedBuffer<Self::Api>) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
         self.registry(&name).set(ManagedAddress::zero());
         self.unregistered_event(&name);
     }

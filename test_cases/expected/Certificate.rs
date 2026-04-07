@@ -37,7 +37,7 @@ pub trait Certificate {
     #[endpoint]
     fn issue_certificate(&self, recipient: ManagedAddress<Self::Api>) {
         require!(self.blockchain().get_caller() == self.issuer().get(), "Not issuer");
-        require!(recipient != address(BigUint::zero(), "Requirement not met");
+        require!(recipient != ManagedAddress::zero(), "Invalid recipient");
         self.certificate_count().set(&(self.certificate_count().get() + BigUint::from(1u32)));
         self.certificate_owner(&self.certificate_count().get()).set(recipient);
         self.certificate_valid(&self.certificate_count().get()).set(true);

@@ -30,7 +30,7 @@ pub trait Timelock {
 
     #[endpoint]
     fn deposit(&self, _amount: BigUint<Self::Api>, _unlockTime: BigUint<Self::Api>) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
         require!(!self.claimed().get(), "Already claimed");
         require!(_unlockTime > self.blockchain().get_block_timestamp(), "Unlock time in past");
         self.amount().set(&_amount);
@@ -40,7 +40,7 @@ pub trait Timelock {
 
     #[endpoint]
     fn claim(&self) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
         require!(!self.claimed().get(), "Already claimed");
         require!(self.blockchain().get_block_timestamp() >= self.unlock_time().get(), "Not yet unlocked");
         self.claimed().set(&true);

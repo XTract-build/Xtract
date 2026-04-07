@@ -113,14 +113,14 @@ pub trait NftStaking {
 
     #[endpoint]
     fn set_reward_rate(&self, newRate: BigUint<Self::Api>) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
         require!(newRate > BigUint::from(0u32), "Rate must be positive");
         self.reward_rate().set(&newRate);
     }
 
     #[endpoint]
     fn set_lock_period(&self, newPeriod: BigUint<Self::Api>) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
         require!(newPeriod > BigUint::from(0u32), "Period must be positive");
         self.lock_period().set(&newPeriod);
     }

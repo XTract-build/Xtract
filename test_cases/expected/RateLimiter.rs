@@ -45,20 +45,20 @@ pub trait RateLimiter {
 
     #[endpoint]
     fn reset_limit(&self, user: ManagedAddress<Self::Api>) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
         self.action_count(&user).set(BigUint::zero());
     }
 
     #[endpoint]
     fn set_limit(&self, newLimit: BigUint<Self::Api>) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
         self.limit_updated_event(&self.limit().get(), &newLimit);
         self.limit().set(&newLimit);
     }
 
     #[endpoint]
     fn set_window(&self, newWindow: BigUint<Self::Api>) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
         self.window_updated_event(&self.window().get(), &newWindow);
         self.window().set(&newWindow);
     }

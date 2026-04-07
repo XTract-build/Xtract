@@ -54,7 +54,7 @@ pub trait Membership {
 
     #[endpoint]
     fn set_fee(&self, newFee: BigUint<Self::Api>) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
         self.fee_updated_event(&self.membership_fee().get(), &newFee);
         self.membership_fee().set(&newFee);
     }

@@ -49,7 +49,7 @@ pub trait Subscription {
 
     #[endpoint]
     fn set_price(&self, newPrice: BigUint<Self::Api>) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
         self.price_updated_event(&self.subscription_price().get(), &newPrice);
         self.subscription_price().set(&newPrice);
     }

@@ -33,7 +33,7 @@ pub trait Vesting {
 
     #[endpoint]
     fn create_schedule(&self, _beneficiary: ManagedAddress<Self::Api>, _amount: BigUint<Self::Api>, _duration: BigUint<Self::Api>) {
-        require!(_beneficiary != address(BigUint::zero(), "Requirement not met");
+        require!(_beneficiary != ManagedAddress::zero(), "Invalid beneficiary");
         require!(_amount > BigUint::zero(), "Invalid amount");
         require!(_duration > BigUint::zero(), "Invalid duration");
         self.beneficiary().set(&_beneficiary);

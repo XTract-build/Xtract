@@ -30,7 +30,7 @@ pub trait Leaderboard {
 
     #[endpoint]
     fn update_score(&self, player: ManagedAddress<Self::Api>, score: BigUint<Self::Api>) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
         self.scores(&player).set(score);
         self.score_updated_event(&player, &score);
     }

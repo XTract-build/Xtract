@@ -32,21 +32,21 @@ pub trait Config {
 
     #[endpoint]
     fn set_uint(&self, memory: ManagedBuffer<Self::Api>, value: BigUint<Self::Api>) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
         self.uint_config(&key).set(value);
         self.uint_config_set_event(&key, &value);
     }
 
     #[endpoint]
     fn set_bool(&self, memory: ManagedBuffer<Self::Api>, value: bool) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
         self.bool_config(&key).set(value);
         self.bool_config_set_event(&key, &value);
     }
 
     #[endpoint]
     fn set_address(&self, memory: ManagedBuffer<Self::Api>, value: ManagedAddress<Self::Api>) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
         self.address_config(&key).set(value);
         self.address_config_set_event(&key, &value);
     }

@@ -27,7 +27,7 @@ pub trait Whitelist {
 
     #[endpoint]
     fn add_to_whitelist(&self, account: ManagedAddress<Self::Api>) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
         require!(!self.whitelisted(&account).get(), "Already whitelisted");
         self.whitelisted(&account).set(true);
         self.whitelist_count().set(&(self.whitelist_count().get() + BigUint::from(1u32)));
@@ -36,7 +36,7 @@ pub trait Whitelist {
 
     #[endpoint]
     fn remove_from_whitelist(&self, account: ManagedAddress<Self::Api>) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
         require!(self.whitelisted(&account).get(), "Not whitelisted");
         self.whitelisted(&account).set(false);
         self.whitelist_count().set(&(self.whitelist_count().get() - BigUint::from(1u32)));

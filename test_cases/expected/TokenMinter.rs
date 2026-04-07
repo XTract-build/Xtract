@@ -49,7 +49,7 @@ pub trait TokenMinter {
     #[endpoint]
     fn mint(&self, to: ManagedAddress<Self::Api>, amount: BigUint<Self::Api>) {
         require!(self.minters(&self.blockchain().get_caller()), "Not minter");
-        require!(to != address(BigUint::zero(), "Requirement not met");
+        require!(to != ManagedAddress::zero(), "Invalid address");
         self.balances(&to).set(self.balances(&to).get() + amount.clone());
         self.total_supply().set(&(self.total_supply().get() + amount.clone()));
         self.minted_event(&to, &amount.clone());
@@ -65,14 +65,14 @@ pub trait TokenMinter {
 
     #[endpoint]
     fn add_minter(&self, minter: ManagedAddress<Self::Api>) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
         self.minters(&minter).set(true);
         self.minter_added_event(&minter);
     }
 
     #[endpoint]
     fn remove_minter(&self, minter: ManagedAddress<Self::Api>) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
         self.minters(&minter).set(false);
         self.minter_removed_event(&minter);
     }

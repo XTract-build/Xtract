@@ -55,7 +55,7 @@ pub trait Deposit {
 
     #[endpoint]
     fn set_limits(&self, newMin: BigUint<Self::Api>, newMax: BigUint<Self::Api>) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
         require!(newMin <= newMax, "Invalid limits");
         self.min_deposit().set(&newMin);
         self.max_deposit().set(&newMax);

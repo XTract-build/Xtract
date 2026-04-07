@@ -33,7 +33,7 @@ pub trait Timer {
 
     #[endpoint]
     fn start(&self, _duration: BigUint<Self::Api>) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
         require!(!self.active().get(), "Already active");
         self.start_time().set(&(self.blockchain().get_block_timestamp()));
         self.duration().set(&_duration);
@@ -43,7 +43,7 @@ pub trait Timer {
 
     #[endpoint]
     fn stop(&self) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
         require!(self.active().get(), "Not active");
         self.active().set(&false);
         self.timer_stopped_event(&self.blockchain().get_block_timestamp());
@@ -51,7 +51,7 @@ pub trait Timer {
 
     #[endpoint]
     fn reset(&self) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
         self.start_time().set(&(BigUint::zero()));
         self.duration().set(&(BigUint::zero()));
         self.active().set(&false);

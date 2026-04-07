@@ -137,7 +137,7 @@ pub trait DaoGovernance {
 
     #[endpoint]
     fn set_quorum(&self, newQuorum: BigUint<Self::Api>) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
         require!(newQuorum > BigUint::from(0u32), "Quorum must be positive");
         self.quorum().set(&newQuorum);
     }

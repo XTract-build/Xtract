@@ -47,13 +47,13 @@ pub trait TokenBridge {
 
     #[endpoint]
     fn complete_bridge(&self, user: ManagedAddress<Self::Api>, amount: BigUint<Self::Api>, nonce: BigUint<Self::Api>) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
         self.bridge_completed_event(&user, &amount.clone(), &nonce);
     }
 
     #[endpoint]
     fn set_fee(&self, newFee: BigUint<Self::Api>) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
         self.fee_updated_event(&self.bridge_fee().get(), &newFee);
         self.bridge_fee().set(&newFee);
     }

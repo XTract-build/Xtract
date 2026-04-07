@@ -40,7 +40,7 @@ pub trait TokenSwap {
 
     #[endpoint]
     fn set_rate(&self, newRate: BigUint<Self::Api>) {
-        require!(self.blockchain().get_caller() == owner, "Not owner");
+        require!(self.blockchain().get_caller() == self.owner().get(), "Not owner");
         require!(newRate > BigUint::zero(), "Invalid rate");
         self.rate_updated_event(&self.rate().get(), &newRate);
         self.rate().set(&newRate);

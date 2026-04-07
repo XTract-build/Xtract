@@ -654,15 +654,40 @@ class Transpiler:
                 continue
 
             # Handle require statements (with or without message)
-            if require_match := re.match(r'require\s*\(([^,)]+)(?:,\s*["\']([^"\']+)["\'])?\)', line):
-                condition = require_match.group(1).strip()
-                message = require_match.group(2).strip() if require_match.group(2) else None
-                statements.append({
-                    "type": "require",
-                    "condition": condition,
-                    "message": message
-                })
-                continue
+            # Use paren-depth-aware parsing to handle conditions with nested parens like address(0)
+            if re.match(r'require\s*\(', line):
+                # Find the opening paren of require(...)
+                open_idx = line.index('(')
+                depth = 0
+                condition_end = -1
+                message = None
+                i = open_idx
+                while i < len(line):
+                    c = line[i]
+                    if c == '(':
+                        depth += 1
+                    elif c == ')':
+                        depth -= 1
+                        if depth == 0:
+                            # Closed require(...) without a message comma at depth 1
+                            condition_end = i
+                            break
+                    elif c == ',' and depth == 1:
+                        # This comma separates condition from message
+                        condition_end = i
+                        msg_match = re.search(r'''["\']([^"\']+)["\']''', line[i+1:])
+                        if msg_match:
+                            message = msg_match.group(1)
+                        break
+                    i += 1
+                if condition_end > open_idx:
+                    condition = line[open_idx + 1:condition_end].strip()
+                    statements.append({
+                        "type": "require",
+                        "condition": condition,
+                        "message": message
+                    })
+                    continue
 
             # Handle revert statements
             if revert_match := re.match(r'revert\s*\(\s*["\']([^"\']+)["\']\s*\)', line):
@@ -1420,6 +1445,9 @@ class Transpiler:
             if type_name.startswith('bytes'):
                 return converted_inner  # transparent cast (bytes20, bytes32)
 
+        # Handle address(0) as a sub-expression (e.g. x != address(0))
+        expr = re.sub(r'\baddress\(0\)', 'ManagedAddress::zero()', expr)
+
         # Handle 1 minutes -> 60 seconds conversion
         expr = re.sub(r'(\d+)\s*minutes', lambda m: str(int(m.group(1)) * 60), expr)
 
@@ -1476,7 +1504,7 @@ class Transpiler:
         # But DO convert storage variables like 'value', 'balanceOf', etc.
         exclude_patterns = [
             'true', 'false', 'self', 'newValue', 'new_value', 'to', 'from',
-            '_to', '_from', '_value', 'spender', 'owner', 'caller', 'description',
+            '_to', '_from', '_value', 'spender', 'caller', 'description',
             'price', 'tokenId', 'token_id', 'durationInMinutes', 'duration_in_minutes',
             'proposalId', 'proposal_id', 'voterAddress', 'voter_address',
             'offerIndex', 'offer_index', 'id', 'required', 'provided'
