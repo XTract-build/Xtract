@@ -854,3 +854,54 @@ def test_keccak256_in_full_contract():
     assert "self.crypto().keccak256(" in result
     warning_messages = [w.message for w in transpiler._warnings]
     assert any("keccak256" in msg for msg in warning_messages)
+
+
+# ── Array operation tests ─────────────────────────────────────────────────────
+
+_ARRAY_CONTRACT = """
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract ArrayOps {
+    uint256[] public items;
+
+    function popLast() public {
+        items.pop();
+    }
+
+    function getLength() public view returns (uint256) {
+        return items.length;
+    }
+
+    function getAt(uint256 i) public view returns (uint256) {
+        return items[i];
+    }
+}
+"""
+
+
+def test_array_pop():
+    """items.pop() must emit a two-line remove-last-element pattern for VecMapper."""
+    result = Transpiler().convert(_ARRAY_CONTRACT)
+    assert "self.items().len() - 1" in result, "Expected len()-based last-index calculation"
+    assert "self.items().remove(" in result, "Expected .remove() call for .pop()"
+
+
+def test_array_length():
+    """items.length must emit self.items().len(), NOT self.items().get().len()."""
+    result = Transpiler().convert(_ARRAY_CONTRACT)
+    assert "self.items().len()" in result, "Expected .len() called directly on VecMapper"
+    assert ".get().len()" not in result, "Must not call .get() before .len() on a VecMapper"
+
+
+def test_array_index_read():
+    """items[i] in an expression must emit self.items().get(i + 1) (VecMapper is 1-indexed)."""
+    result = Transpiler().convert(_ARRAY_CONTRACT)
+    assert "self.items().get(" in result, "Expected .get() for VecMapper indexed read"
+    assert "+ 1)" in result, "Expected 1-indexed offset for VecMapper"
+
+
+def test_array_storage_mapper_type():
+    """A Solidity uint256[] storage var must produce a VecMapper in the trait definition."""
+    result = Transpiler().convert(_ARRAY_CONTRACT)
+    assert "VecMapper<" in result, "Expected VecMapper type for array storage variable"

@@ -74,6 +74,7 @@ class Transpiler:
         # Populated by convert() from _extract_storage() before any expression conversion
         self._storage_var_names: set[str] = set()
         self._mapping_var_names: dict[str, int] = {}  # name → number of keys
+        self._array_var_names: set[str] = set()  # VecMapper array variables
         self._using_for: dict[str, str] = {}   # type_name -> library_name
         self._warnings: list[TranspilationWarning] = []
 
@@ -813,6 +814,14 @@ class Transpiler:
                     })
                 continue
 
+            # Handle array .pop() — removes the last element
+            if pop_match := re.match(r'(\w+)\.pop\s*\(\s*\)', line):
+                statements.append({
+                    "type": "pop",
+                    "array_name": pop_match.group(1),
+                })
+                continue
+
             # Handle struct initialization and push
             if push_match := re.match(r'(\w+)\.push\s*\((.+)\)', line):
                 array_name = push_match.group(1)
@@ -986,7 +995,16 @@ class Transpiler:
         elif stmt_type == "push":
             array_name = stmt["array_name"]
             struct_data = self._convert_struct_initialization(stmt["struct_data"])
-            return f'        self.{array_name}().push(&{struct_data});'
+            snake = camel_to_snake(array_name)
+            return f'        self.{snake}().push(&{struct_data});'
+
+        elif stmt_type == "pop":
+            array_name = stmt["array_name"]
+            snake = camel_to_snake(array_name)
+            return (
+                f'        let last_idx = self.{snake}().len() - 1;\n'
+                f'        self.{snake}().remove(last_idx);'
+            )
 
         elif stmt_type == "struct_field_update":
             struct_var = stmt["struct_var"]
@@ -1444,8 +1462,18 @@ class Transpiler:
         # Handle simple arithmetic and comparisons (basic cases)
         # This would need to be much more sophisticated for complex expressions
 
-        # Handle array length
-        expr = expr.replace(".length", ".len()")
+        # Handle array/storage .length → .len() called directly on the VecMapper.
+        # Replace VARNAME.length with self.var_name().len() for known array vars,
+        # or VARNAME.len() for everything else (generic fallback).
+        def replace_length(m: re.Match) -> str:
+            var = m.group(1)
+            if var in self._array_var_names:
+                return f'self.{camel_to_snake(var)}().len()'
+            if var in self._storage_var_names:
+                # SingleValueMapper — .len() is likely wrong, but preserve prior behaviour
+                return f'self.{camel_to_snake(var)}().get().len()'
+            return f'{var}.len()'
+        expr = re.sub(r'\b(\w+)\.length\b', replace_length, expr)
 
         # Handle power operator (limited)
         expr = expr.replace("**", ".pow")
@@ -1538,6 +1566,19 @@ class Transpiler:
         # Replace standalone numbers (avoid numbers already in function calls)
         expr = re.sub(r'(?<!::from\()\b(\d+)\b(?!u32|u64|u16|u8|i32|i64|i16|i8)', replace_number, expr)
 
+        # Handle VecMapper array indexing BEFORE variable substitution so the variable
+        # name is still in its original camelCase form.  someArray[i] → self.some_array().get(i + 1)
+        # (VecMapper is 1-indexed in MultiversX).
+        if self._array_var_names:
+            def replace_array_index(m: re.Match) -> str:
+                var = m.group(1)
+                if var in self._array_var_names:
+                    raw_idx = m.group(2).strip()
+                    converted_idx = self._convert_expression(raw_idx)
+                    return f'self.{camel_to_snake(var)}().get({converted_idx} + 1)'
+                return m.group(0)
+            expr = re.sub(r'\b(\w+)\[([^\]]+)\]', replace_array_index, expr)
+
         # Handle variable access - convert simple variable names to storage getters
         # This is a simple heuristic - in a full implementation we'd need proper symbol resolution
         # Only exclude language keywords and boolean literals here.
@@ -1555,6 +1596,9 @@ class Transpiler:
             elif var in self._storage_var_names:
                 return f'self.{camel_to_snake(var)}().get()'
             elif var in self._mapping_var_names:
+                return f'self.{camel_to_snake(var)}()'
+            elif var in self._array_var_names:
+                # Standalone array reference (e.g. passed to a function) — return the VecMapper
                 return f'self.{camel_to_snake(var)}()'
             else:
                 return var
@@ -1683,9 +1727,19 @@ class Transpiler:
         # Strip struct/function/modifier bodies so their fields are not captured as storage vars
         content_no_bodies = re.sub(r'\bstruct\s+\w+\s*\{[^}]*\}', '', content, flags=re.DOTALL)
 
+        # Array variables (uint256[], address[], etc.) → VecMapper
+        for match in re.finditer(
+            r"(uint256|uint128|uint64|uint32|uint16|uint8|int256|int128|int64|int32|int16|int8|string|address|bool)\s*\[\s*\]"
+            r"(?:\s+(?:public|private|internal|external))?\s+(\w+)\s*;",
+            content_no_bodies,
+        ):
+            vars.append(("array", match.group(2), match.group(1)))
+
         # Simple variables (uint256, address, etc.)
         for match in re.finditer(r"(uint256|uint128|uint64|uint32|uint16|uint8|int256|int128|int64|int32|int16|int8|string|address|bool|u8)(?:\s+(?:public|private|internal|external))?\s+(\w+)\s*;", content_no_bodies):
-            vars.append((match.group(1), match.group(2), ""))
+            # Skip names already captured as arrays
+            if not any(v[1] == match.group(2) for v in vars):
+                vars.append((match.group(1), match.group(2), ""))
 
         # Nested mappings: mapping(type1 => mapping(type2 => type3))
         for match in re.finditer(r"mapping\s*\(\s*(\w+)\s*=>\s*mapping\s*\(\s*(\w+)\s*=>\s*(\w+)\s*\)\s*\)\s*(?:public|private|internal|external)?\s*(\w+)\s*;", content):
@@ -1709,6 +1763,9 @@ class Transpiler:
 
     def _convert_storage_mapper(self, var_type: str, var_name: str, mapping_info: str = "") -> str:
         """Convert storage variable to appropriate mapper type"""
+        if var_type == "array":
+            elem_type = self._map_type(mapping_info) if mapping_info else "BigUint<Self::Api>"
+            return f"VecMapper<{elem_type}>"
         if var_type == "nested_mapping":
             # Parse key1=>key2=>value nested mapping
             parts = mapping_info.split("=>")
@@ -1853,12 +1910,16 @@ class Transpiler:
         # Build lookup sets used by _convert_expression and _convert_statement
         self._storage_var_names = {
             var_name for var_type, var_name, _ in storage
-            if var_type not in ("mapping", "nested_mapping")
+            if var_type not in ("mapping", "nested_mapping", "array")
         }
         self._mapping_var_names = {
             var_name: (2 if var_type == "nested_mapping" else 1)
             for var_type, var_name, _ in storage
             if var_type in ("mapping", "nested_mapping")
+        }
+        self._array_var_names = {
+            var_name for var_type, var_name, _ in storage
+            if var_type == "array"
         }
 
         lines: list[str] = []
@@ -1898,7 +1959,10 @@ class Transpiler:
             mapper_t = self._convert_storage_mapper(var_type, var_name, mapping_info)
             snake_name = camel_to_snake(var_name)
 
-            if var_type == "nested_mapping":
+            if var_type == "array":
+                lines.append(f"    #[storage_mapper(\"{var_name}\")]")
+                lines.append(f"    fn {snake_name}(&self) -> {mapper_t};")
+            elif var_type == "nested_mapping":
                 # Parse key1=>key2=>value nested mapping
                 parts = mapping_info.split("=>")
                 if len(parts) == 3:
