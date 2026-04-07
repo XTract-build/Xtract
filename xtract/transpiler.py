@@ -1500,15 +1500,13 @@ class Transpiler:
 
         # Handle variable access - convert simple variable names to storage getters
         # This is a simple heuristic - in a full implementation we'd need proper symbol resolution
-        # Don't convert function parameters, literals, or certain keywords
-        # But DO convert storage variables like 'value', 'balanceOf', etc.
-        exclude_patterns = [
-            'true', 'false', 'self', 'newValue', 'new_value', 'to', 'from',
-            '_to', '_from', '_value', 'spender', 'caller', 'description',
-            'price', 'tokenId', 'token_id', 'durationInMinutes', 'duration_in_minutes',
-            'proposalId', 'proposal_id', 'voterAddress', 'voter_address',
-            'offerIndex', 'offer_index', 'id', 'required', 'provided'
-        ]
+        # Only exclude language keywords and boolean literals here.
+        # Do NOT add variable names (owner, spender, price, etc.) to this list —
+        # if a name is a real storage variable it appears in self._storage_var_names and
+        # must be converted to .get().  Function parameters that happen to share a name
+        # with a storage variable are handled correctly because they are NOT present in
+        # _storage_var_names, so the elif branch below simply won't fire for them.
+        exclude_patterns = ['true', 'false', 'self']
 
         def convert_var(match):
             var = match.group(1)
