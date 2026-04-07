@@ -653,6 +653,14 @@ class Transpiler:
             if not line:
                 continue
 
+            # Handle placeholder tokens left by pre-parse stripping
+            if line == self._TODO_TRY_CATCH:
+                statements.append({"type": "todo_try_catch"})
+                continue
+            if line == self._TODO_ASSEMBLY:
+                statements.append({"type": "todo_assembly"})
+                continue
+
             # Handle require statements (with or without message)
             # Use paren-depth-aware parsing to handle conditions with nested parens like address(0)
             if re.match(r'require\s*\(', line):
@@ -835,7 +843,13 @@ class Transpiler:
         """Convert a single statement to MultiversX Rust"""
         stmt_type = stmt["type"]
 
-        if stmt_type == "require":
+        if stmt_type == "todo_try_catch":
+            return "        // TODO: try-catch block removed \u2014 implement error handling manually"
+
+        elif stmt_type == "todo_assembly":
+            return "        // TODO: inline assembly removed \u2014 no MultiversX equivalent"
+
+        elif stmt_type == "require":
             condition = self._convert_expression(stmt["condition"])
             message = stmt.get("message")
             # MultiversX require! macro always needs a message
@@ -1699,7 +1713,87 @@ class Transpiler:
 
         return f"SingleValueMapper<{self._map_type(var_type)}>"
 
+    _TODO_TRY_CATCH = "__xtract_todo_try_catch__"
+    _TODO_ASSEMBLY = "__xtract_todo_assembly__"
+
+    def _strip_brace_block(self, content: str, brace_open: int) -> int:
+        """Return the index one past the closing '}' that matches *brace_open*.
+
+        Returns -1 if no match is found.
+        """
+        depth = 0
+        pos = brace_open
+        while pos < len(content):
+            if content[pos] == '{':
+                depth += 1
+            elif content[pos] == '}':
+                depth -= 1
+                if depth == 0:
+                    return pos + 1
+            pos += 1
+        return -1
+
+    def _strip_try_catch_blocks(self, content: str) -> str:
+        """Remove try { ... } catch ... { ... } constructs (brace-depth-aware).
+
+        Solidity's try has the form:
+            try <expression> [returns (...)] { ... } catch [(...)] { ... }
+        We scan from the 'try' keyword to the first '{', match braces, then
+        consume any number of following catch clauses, and replace the whole
+        span with a placeholder token that survives _parse_statements.
+        """
+        result = content
+        while True:
+            m = re.search(r'\btry\b', result)
+            if not m:
+                break
+            start = m.start()
+            # Scan forward to the first '{' (opening brace of the try body)
+            pos = m.end()
+            while pos < len(result) and result[pos] != '{':
+                pos += 1
+            if pos >= len(result):
+                break
+            end = self._strip_brace_block(result, pos)
+            if end == -1:
+                break
+            # Consume any trailing catch [...] { ... } blocks
+            while True:
+                tail = result[end:]
+                catch_m = re.match(r'\s*catch\b[^{]*\{', tail)
+                if not catch_m:
+                    break
+                catch_brace = end + catch_m.end() - 1  # position of '{'
+                new_end = self._strip_brace_block(result, catch_brace)
+                if new_end == -1:
+                    break
+                end = new_end
+            result = result[:start] + self._TODO_TRY_CATCH + ";" + result[end:]
+        return result
+
+    def _strip_assembly_blocks(self, content: str) -> str:
+        """Remove assembly { ... } blocks (brace-depth-aware)."""
+        result = content
+        while True:
+            m = re.search(r'\bassembly\b\s*\{', result)
+            if not m:
+                break
+            start = m.start()
+            brace_open = m.end() - 1
+            end = self._strip_brace_block(result, brace_open)
+            if end == -1:
+                break
+            result = result[:start] + self._TODO_ASSEMBLY + ";" + result[end:]
+        return result
+
     def convert(self, solidity_content: str) -> str:
+        # Strip try-catch and assembly blocks before parsing so that the
+        # regex-based parser never sees raw Solidity syntax it cannot handle.
+        # We replace them with placeholder tokens that survive _parse_statements
+        # (which strips //… comments) and are later emitted as TODO comments.
+        solidity_content = self._strip_try_catch_blocks(solidity_content)
+        solidity_content = self._strip_assembly_blocks(solidity_content)
+
         # Reset per-conversion state
         self._using_for = {}
         self._warnings = []

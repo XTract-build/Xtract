@@ -768,3 +768,42 @@ def test_constructor_params_emitted_in_init():
     """
     result = Transpiler().convert(sol)
     assert "fn init(&self, _owner: ManagedAddress<Self::Api>, _initialSupply: BigUint<Self::Api>)" in result
+
+
+def test_try_catch_stripped():
+    """try-catch blocks must be replaced with a TODO comment, not left in output"""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+    contract TryCatchExample {
+        uint256 public value;
+        function riskyCall(address target) external {
+            try IFoo(target).bar() returns (uint256 v) {
+                value = v;
+            } catch {
+                value = 0;
+            }
+        }
+    }
+    """
+    result = Transpiler().convert(sol)
+    assert "// TODO: try-catch block removed" in result, "Expected TODO comment for try-catch"
+    assert "try {" not in result and "try IFoo" not in result, "Raw try block must not appear in output"
+
+
+def test_assembly_stripped():
+    """inline assembly blocks must be replaced with a TODO comment, not left in output"""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+    contract AsmExample {
+        function getSize(address _addr) external view returns (uint256 size) {
+            assembly {
+                size := extcodesize(_addr)
+            }
+        }
+    }
+    """
+    result = Transpiler().convert(sol)
+    assert "// TODO: inline assembly removed" in result, "Expected TODO comment for assembly"
+    assert "assembly {" not in result, "Raw assembly block must not appear in output"
