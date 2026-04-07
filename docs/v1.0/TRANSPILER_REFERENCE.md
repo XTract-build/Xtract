@@ -22,7 +22,7 @@ Full feature coverage for the v1.0 transpiler (`xtract/transpiler.py`).
 | `bool` | `bool` | |
 | `mapping(K => V)` | `SingleValueMapper` / `MapMapper` | key-parameterised storage fn |
 | `mapping(K => mapping(K2 => V))` | multi-key storage mapper | |
-| `T[]` | `VecMapper<Self::Api, T>` | |
+| `T[]` | `VecMapper<T>` | dynamic-length array; 1-indexed |
 | `T[N]` | `ArrayMapper<Self::Api, T, N>` | |
 
 ---
@@ -63,6 +63,11 @@ Full feature coverage for the v1.0 transpiler (`xtract/transpiler.py`).
 | Mapping read in expression | `.get()` appended automatically | scoped to known storage vars |
 | Mapping write (assignment) | `.set()` emitted | |
 | Function parameter `.clone()` | emitted for all params, not just `_to`/`_from` | uses actual param introspection |
+| `array[]` storage variable | `VecMapper<T>` trait fn | declared as `fn name(&self) -> VecMapper<T>;` |
+| `array.push(v)` | `self.array().push(&v)` | |
+| `array.pop()` | `let last = self.array().len() - 1; self.array().remove(last);` | two-statement expansion |
+| `array.length` | `self.array().len()` | called on VecMapper directly, not `.get().len()` |
+| `array[i]` (read) | `self.array().get(i + 1)` | VecMapper is 1-indexed |
 
 ---
 

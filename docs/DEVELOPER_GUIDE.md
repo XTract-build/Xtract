@@ -199,14 +199,31 @@ const { contractAddress, explorerUrl } = await deployer.deploy({
 | `bytes` | `ManagedBuffer<Self::Api>` |
 | `bytes1`–`bytes32` | `[u8; N]` |
 | `mapping(K => V)` | `MapMapper<Self::Api, K, V>` |
-| `T[]` | `VecMapper<Self::Api, T>` |
+| `T[]` | `VecMapper<T>` | 1-indexed dynamic array |
 | `T[N]` | `ArrayMapper<Self::Api, T, N>` |
+
+## VecMapper — 1-Indexed Array Access
+
+MultiversX `VecMapper` uses **1-based indexing**, unlike Solidity arrays (0-based).
+The transpiler handles this automatically:
+
+| Solidity | MultiversX Rust |
+|---|---|
+| `arr[]` storage var | `fn arr(&self) -> VecMapper<T>;` |
+| `arr.push(v)` | `self.arr().push(&v)` |
+| `arr.pop()` | `let last_idx = self.arr().len() - 1;` + `self.arr().remove(last_idx);` |
+| `arr.length` | `self.arr().len()` |
+| `arr[i]` (read) | `self.arr().get(i + 1)` |
+
+> **Why `+ 1`?**  `VecMapper::get` is 1-indexed.  Index 0 is out-of-bounds in MultiversX.
+> If your Solidity code already adjusts indices, review the generated `+ 1` manually.
 
 ## Supported Solidity Features
 
 ### Fully supported
 - Contract declarations, constructors, state variables
 - Single and nested mappings
+- Dynamic arrays (`T[]`) — VecMapper with full push/pop/length/index support
 - Events with indexed parameters
 - Custom errors, structs
 - Public/private/view/payable functions
