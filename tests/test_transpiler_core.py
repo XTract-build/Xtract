@@ -807,3 +807,50 @@ def test_assembly_stripped():
     result = Transpiler().convert(sol)
     assert "// TODO: inline assembly removed" in result, "Expected TODO comment for assembly"
     assert "assembly {" not in result, "Raw assembly block must not appear in output"
+
+
+def test_keccak256_maps_to_crypto_api():
+    """keccak256(data) must map to self.crypto().keccak256() with a warning"""
+    t = Transpiler()
+    result = t._convert_expression("keccak256(data)")
+    assert "self.crypto().keccak256(" in result, f"Got: {result!r}"
+    warning_messages = [w.message for w in t._warnings]
+    assert any("keccak256" in msg and "ManagedBuffer" in msg for msg in warning_messages)
+
+
+def test_sha256_maps_to_crypto_api():
+    """sha256(data) must map to self.crypto().sha256() with a warning"""
+    t = Transpiler()
+    result = t._convert_expression("sha256(data)")
+    assert "self.crypto().sha256(" in result, f"Got: {result!r}"
+    warning_messages = [w.message for w in t._warnings]
+    assert any("sha256" in msg and "ManagedBuffer" in msg for msg in warning_messages)
+
+
+def test_ecrecover_emits_stub_and_warning():
+    """ecrecover(...) must emit a TODO stub and a warning about no MultiversX equivalent"""
+    t = Transpiler()
+    result = t._convert_expression("ecrecover(hash, v, r, s)")
+    assert "ManagedAddress::zero()" in result, f"Got: {result!r}"
+    assert "TODO" in result and "ecrecover" in result, f"Got: {result!r}"
+    warning_messages = [w.message for w in t._warnings]
+    assert any("ecrecover" in msg and "no MultiversX equivalent" in msg for msg in warning_messages)
+
+
+def test_keccak256_in_full_contract():
+    """keccak256 used inside a contract function produces crypto API call in output"""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+
+    contract HashTest {
+        function getHash(bytes memory data) public view returns (bytes32) {
+            return keccak256(data);
+        }
+    }
+    """
+    transpiler = Transpiler()
+    result = transpiler.convert(sol)
+    assert "self.crypto().keccak256(" in result
+    warning_messages = [w.message for w in transpiler._warnings]
+    assert any("keccak256" in msg for msg in warning_messages)

@@ -1371,6 +1371,32 @@ class Transpiler:
             cond, then_expr, else_expr = ternary
             return f'if {self._convert_expression(cond)} {{ {self._convert_expression(then_expr)} }} else {{ {self._convert_expression(else_expr)} }}'
 
+        # Handle keccak256(data) → self.crypto().keccak256(&data_as_managed_buffer)
+        keccak_match = re.match(r'^keccak256\((.+)\)$', expr.strip(), re.DOTALL)
+        if keccak_match:
+            inner = self._convert_expression(keccak_match.group(1).strip())
+            self._warnings.append(TranspilationWarning(
+                "keccak256 mapped to self.crypto().keccak256() — ensure input is converted to ManagedBuffer"
+            ))
+            return f'self.crypto().keccak256(&{inner})'
+
+        # Handle sha256(data) → self.crypto().sha256(&data_as_managed_buffer)
+        sha256_match = re.match(r'^sha256\((.+)\)$', expr.strip(), re.DOTALL)
+        if sha256_match:
+            inner = self._convert_expression(sha256_match.group(1).strip())
+            self._warnings.append(TranspilationWarning(
+                "sha256 mapped to self.crypto().sha256() — ensure input is converted to ManagedBuffer"
+            ))
+            return f'self.crypto().sha256(&{inner})'
+
+        # Handle ecrecover(hash, v, r, s) — no MultiversX equivalent
+        ecrecover_match = re.match(r'^ecrecover\((.+)\)$', expr.strip(), re.DOTALL)
+        if ecrecover_match:
+            self._warnings.append(TranspilationWarning(
+                "ecrecover has no MultiversX equivalent — manual implementation required"
+            ))
+            return 'ManagedAddress::zero() /* TODO: ecrecover — no direct MultiversX equivalent, use off-chain verification */'
+
         # Handle bare new ContractType(args) used as an expression (without assignment)
         if re.match(r'new\s+\w+\s*\([^)]*\)', expr.strip()):
             self._warnings.append(TranspilationWarning(
