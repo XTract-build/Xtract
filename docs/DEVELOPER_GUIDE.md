@@ -224,8 +224,14 @@ const { contractAddress, explorerUrl } = await deployer.deploy({
 - **Inline assembly** — replaced with `// TODO: inline assembly removed — no MultiversX equivalent`. Requires manual rewrite using Rust/SC APIs.
 - **Try-catch blocks** — replaced with `// TODO: try-catch block removed — implement error handling manually`. Replace with async callbacks or `require!` guards.
 
+### Cryptographic builtins (mapped with warnings)
+- `keccak256(data)` → `self.crypto().keccak256(&data)` — input must be a `ManagedBuffer`
+- `sha256(data)` → `self.crypto().sha256(&data)` — input must be a `ManagedBuffer`
+- `ecrecover(hash, v, r, s)` → `ManagedAddress::zero() /* TODO */` — no on-chain equivalent; use off-chain verification
+
 ### Not yet supported
 - Libraries, diamond inheritance
+- `ecrecover` (stubbed with TODO and warning)
 
 ### Supported since v1.0
 - Do-while loops → `loop { ... if !cond { break } }`

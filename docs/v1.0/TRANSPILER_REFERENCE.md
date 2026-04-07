@@ -66,6 +66,25 @@ Full feature coverage for the v1.0 transpiler (`xtract/transpiler.py`).
 
 ---
 
+## Cryptography
+
+| Solidity | MultiversX output | Notes |
+|---|---|---|
+| `keccak256(data)` | `self.crypto().keccak256(&data)` | Input must be a `ManagedBuffer`; a transpilation warning is emitted |
+| `sha256(data)` | `self.crypto().sha256(&data)` | Input must be a `ManagedBuffer`; a transpilation warning is emitted |
+| `ecrecover(hash, v, r, s)` | `ManagedAddress::zero() /* TODO */` | No MultiversX equivalent — use off-chain verification; a transpilation warning is emitted |
+
+### ManagedBuffer conversion
+
+The `self.crypto()` API expects a `&ManagedBuffer` argument. If the input in your Solidity contract is `bytes` or `bytes32`, convert it before hashing:
+
+```rust
+let buf = ManagedBuffer::from(data.as_slice());
+let hash = self.crypto().keccak256(&buf);
+```
+
+---
+
 ## Not Supported (Documented Workarounds)
 
 | Feature | Reason | Workaround |
@@ -77,6 +96,7 @@ Full feature coverage for the v1.0 transpiler (`xtract/transpiler.py`).
 | `abi.encodeWithSelector` | Partial | Manual `ManagedBuffer` |
 | Diamond inheritance | Complex trait resolution | Flatten inheritance manually |
 | Libraries | Not emitted | Inline library logic |
+| `ecrecover` | No on-chain equivalent | Verify signatures off-chain |
 
 ---
 
