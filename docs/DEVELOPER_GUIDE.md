@@ -97,7 +97,8 @@ xtract deploy ./output/my_contract.wasm \
 ## Python API
 
 ```python
-from xtract import transpile, Transpiler
+from xtract import transpile
+from xtract.transpiler import Transpiler
 from xtract import build_contract
 from xtract import create_wallet, WalletInfo
 from xtract import deploy_contract, DeployResult
@@ -107,7 +108,8 @@ from xtract import deploy_contract, DeployResult
 
 ```python
 from pathlib import Path
-from xtract import transpile, Transpiler
+from xtract import transpile
+from xtract.transpiler import Transpiler
 
 # Simple: file in, file out
 transpile(Path("MyContract.sol"), Path("MyContract.rs"))
