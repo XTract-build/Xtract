@@ -76,7 +76,7 @@ v1.0 adds the full deployment pipeline on top of the transpiler. See [docs/v1.0/
 
 `int8`, `int16`, `int32`, and `int64` casts map to Rust `i8`, `i16`, `i32`, and `i64`. `int256` maps to MultiversX `BigInt<Self::Api>`, which has more limited negative number support than Solidity `int256`; review warnings on negative literals or variable casts before relying on equivalent storage or arithmetic behavior.
 
-**Test Coverage**: 100% unit test success across 50 Solidity contracts with 64 test functions.
+**Test Coverage**: 100% unit test success across 50 Solidity contracts and 148 pytest cases.
 
 ## TypeScript SDK
 
@@ -202,7 +202,7 @@ cat MyStorage.rs
 - Single and nested mappings
 - Events with indexed parameters
 - Custom errors, structs
-- Functions (public, private, view, payable)
+- Functions (public, private, view, payable), including `fallback()` and payable `receive()` mapped to `#[fallback]`
 - `msg.value` → `self.call_value().egld_value()`
 - `msg.sender` → `self.blockchain().get_caller()`
 - Function modifiers — full pre/post body inlining, including `nonReentrant`
@@ -214,6 +214,8 @@ cat MyStorage.rs
 - `bytes` / `bytes32` casts from string and hex literals → `ManagedBuffer`
 
 Custom error reverts map to `sc_panic!` string messages. `revert CustomError()` emits `sc_panic!("CustomError")`, `revert CustomError("message")` emits `sc_panic!("message")`, and typed custom error arguments are dropped with a diagnostic warning because MultiversX does not support Solidity-style typed errors.
+
+Solidity `fallback()` and `receive()` handlers map to the MultiversX fallback entry point: `#[fallback] fn call(&self)`. Payable `receive()` handlers also emit `#[payable("EGLD")]`. The transpiler emits a diagnostic warning because Solidity's separate receive/fallback dispatch semantics require manual review after conversion.
 
 ### Requires Manual Review
 - Complex arithmetic expressions
@@ -267,7 +269,7 @@ XTract/
     wallet.py        #   BIP39 wallet generation
     deploy.py        #   Contract deployment via multiversx-sdk
   sdk/               # TypeScript SDK (bundled into xtract-cli npm package)
-  tests/             # Python unit tests (64 test functions)
+  tests/             # Python unit tests
   test_cases/        # Solidity inputs and expected Rust outputs (50 contracts)
   docs/              # Documentation
   .github/workflows/ # CI configuration

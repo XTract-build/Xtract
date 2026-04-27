@@ -65,6 +65,8 @@ Numeric casts to bytes require manual review because the correct byte order and 
 | `nonReentrant` | `locked.set(true)` / `locked.set(false)` around body | |
 | Function visibility | `pub` / private / `#[view]` / `#[endpoint]` | |
 | Payable functions | `#[payable("EGLD")]` | |
+| `fallback() external` | `#[fallback] fn call(&self)` | emits `TranspilationWarning` for manual review |
+| `receive() external payable` | `#[payable("EGLD")]` + `#[fallback] fn call(&self)` | emits `TranspilationWarning` for manual review |
 | `msg.sender` | `self.blockchain().get_caller()` | |
 | `msg.value` | `self.call_value().egld_value()` | payable function must use `#[payable("EGLD")]` |
 | `msg.data` | `ManagedBuffer::new()` stub | emits `TranspilationWarning`; manual conversion required |
@@ -127,6 +129,10 @@ let hash = self.crypto().keccak256(&buf);
 ### `tx.origin` vs `msg.sender` on MultiversX
 
 On EVM, `tx.origin` is the original EOA that initiated the transaction, while `msg.sender` is the immediate caller (which may be a contract). On MultiversX, there is no equivalent distinction — the caller is always the direct caller. XTract maps `tx.origin` to `self.blockchain().get_caller()` and emits a `TranspilationWarning` to flag this semantic difference for manual review.
+
+### `fallback()` and `receive()` on MultiversX
+
+Solidity `fallback()` and `receive()` handlers both map to the MultiversX fallback entry point, emitted as `#[fallback] fn call(&self)`. Solidity `receive() external payable` is additionally annotated with `#[payable("EGLD")]`. XTract emits a `TranspilationWarning` for these mappings because Solidity distinguishes empty calldata value transfers from general fallback calls, while MultiversX uses the fallback entry point for this handler shape.
 
 ### `type(uint256).max`
 

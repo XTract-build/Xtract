@@ -242,7 +242,7 @@ The transpiler handles this automatically:
 - Dynamic arrays (`T[]`) — VecMapper with full push/pop/length/index support
 - Events with indexed parameters
 - Custom errors, structs
-- Public/private/view/payable functions
+- Public/private/view/payable functions, including `fallback()` and payable `receive()`
 - Function modifiers (`onlyOwner`, custom)
 - Basic inheritance (`contract A is B, C`) as a supertrait stub with manual integration required
 - `require` / `revert`, if/else, for loops, while loops, do-while loops
@@ -266,6 +266,17 @@ Custom error arguments dropped — MultiversX sc_panic only supports string mess
 ```
 
 Use string message arguments for error context that should survive transpilation. Keep typed Solidity custom error fields as source-level metadata only; the generated MultiversX contract will not encode or expose them.
+
+### Fallback and receive functions
+
+Solidity `fallback()` and `receive()` declarations are converted to the MultiversX fallback entry point:
+
+| Solidity input | Generated MultiversX Rust |
+|---|---|
+| `fallback() external` | `#[fallback] fn call(&self)` |
+| `receive() external payable` | `#[payable("EGLD")]` + `#[fallback] fn call(&self)` |
+
+Both mappings emit a `TranspilationWarning`. Review converted handlers manually because Solidity has separate dispatch for empty calldata payments and general fallback calls, while the generated MultiversX contract uses the `call` fallback entry point.
 
 ### Contract inheritance
 
@@ -384,7 +395,7 @@ pub trait SimpleStorage {
 
 1. **Start simple** — validate transpiler output on basic contracts before migrating complex DeFi logic.
 2. **Always review output** — check generated function bodies, especially around arithmetic and state mutations.
-3. **Payment handling** — Solidity's `msg.value` maps to `self.call_value().egld_value()` in MultiversX; payable functions are annotated with `#[payable("EGLD")]` automatically. `msg.sender` maps to `self.blockchain().get_caller()`. `msg.data` and `msg.sig` have no direct equivalent and emit TODO stubs with warnings — these require manual conversion.
+3. **Payment handling** — Solidity's `msg.value` maps to `self.call_value().egld_value()` in MultiversX; payable functions are annotated with `#[payable("EGLD")]` automatically, including `receive() external payable` when it is mapped to `#[fallback] fn call(&self)`. `msg.sender` maps to `self.blockchain().get_caller()`. `msg.data` and `msg.sig` have no direct equivalent and emit TODO stubs with warnings — these require manual conversion.
 4. **Test on devnet first** — use `--network devnet` until you're confident in the contract behaviour.
 5. **Keep your mnemonic** — `xtract wallet create` shows it once; there is no recovery path.
 
