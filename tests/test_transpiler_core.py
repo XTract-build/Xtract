@@ -1110,6 +1110,25 @@ def test_msg_value_maps_to_egld_value():
     assert "require!" in result, "Expected require! macro in output"
 
 
+def test_receive_maps_to_payable_fallback():
+    """receive() should become a payable MultiversX fallback handler"""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+
+    contract Receiver {
+        receive() external payable {
+            require(msg.value > 0, "No payment");
+        }
+    }
+    """
+    result = Transpiler().convert_with_diagnostics(sol)
+    assert '#[payable("EGLD")]' in result.code
+    assert "#[fallback]" in result.code
+    assert "fn call(&self)" in result.code
+    assert any("receive()" in w.message and "#[fallback]" in w.message for w in result.warnings)
+
+
 def test_msg_sender_maps_to_get_caller():
     """Test that msg.sender is rewritten to self.blockchain().get_caller()"""
     sol = """

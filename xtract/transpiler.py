@@ -257,35 +257,12 @@ class Transpiler:
     def parse_functions(self, content: str):
         functions = []
 
-        # Parse constructors first
-        constructors = self.parse_constructors(content)
-        for constructor in constructors:
-            functions.append({
-                "name": "",  # Empty name for constructor (becomes init)
-                "params": constructor["params"],
-                "is_view": False,
-                "return_type": None,
-                "body": constructor["body"],
-                "applied_modifiers": [],
-            })
-
-        # Parse regular functions - use a more robust method to handle nested braces
-        # First find function signatures, then extract bodies using brace matching
-        for match in re.finditer(r"function\s+(\w+)\s*\((.*?)\)\s*([^\{]*)\{", content, re.DOTALL):
-            name = match.group(1)
-            params = match.group(2).strip()
-            modifiers_str = match.group(3).strip()
-
-            # Use brace matching to extract body with nested braces
-            brace_start = match.end() - 1  # Position of the opening brace
-            brace_end = self._find_matching_brace(content, brace_start)
-            if brace_end == -1:
-                body = ""
-            else:
-                body = content[brace_start + 1:brace_end].strip()
-
+        def build_function(name: str, params: str, modifiers_str: str, body: str, start: int) -> dict:
             is_view = " view" in f" {modifiers_str} " or " view " in f" {modifiers_str} "
             is_payable = " payable" in f" {modifiers_str} " or " payable " in f" {modifiers_str} "
+            is_fallback = name in ("fallback", "receive")
+            if name == "receive":
+                is_payable = True
 
             # Extract applied modifiers (custom modifiers like onlyOwner)
             # Remove visibility, returns, payable keywords to find custom modifiers
@@ -304,15 +281,73 @@ class Transpiler:
 
             returns_match = re.search(r"returns\s*\(([^)]*)\)", modifiers_str)
             return_type = returns_match.group(1).strip() if returns_match else None
-            functions.append({
+
+            if is_fallback:
+                line = content.count("\n", 0, start) + 1
+                payable_note = ' with #[payable("EGLD")]' if name == "receive" else ""
+                self._warnings.append(TranspilationWarning(
+                    f"Solidity {name}() mapped to MultiversX #[fallback] fn call(&self){payable_note}",
+                    line,
+                ))
+
+            return {
                 "name": name,
                 "params": params,
                 "is_view": is_view,
                 "is_payable": is_payable,
+                "is_fallback": is_fallback,
                 "return_type": return_type,
                 "body": body,
                 "applied_modifiers": applied_modifiers,
+            }
+
+        # Parse constructors first
+        constructors = self.parse_constructors(content)
+        for constructor in constructors:
+            functions.append({
+                "name": "",  # Empty name for constructor (becomes init)
+                "params": constructor["params"],
+                "is_view": False,
+                "return_type": None,
+                "body": constructor["body"],
+                "applied_modifiers": [],
             })
+
+        seen_ranges = []
+
+        # Parse regular functions - use a more robust method to handle nested braces
+        # First find function signatures, then extract bodies using brace matching
+        for match in re.finditer(r"function\s+(\w+)\s*\((.*?)\)\s*([^\{]*)\{", content, re.DOTALL):
+            name = match.group(1)
+            params = match.group(2).strip()
+            modifiers_str = match.group(3).strip()
+
+            # Use brace matching to extract body with nested braces
+            brace_start = match.end() - 1  # Position of the opening brace
+            brace_end = self._find_matching_brace(content, brace_start)
+            if brace_end == -1:
+                body = ""
+            else:
+                body = content[brace_start + 1:brace_end].strip()
+                seen_ranges.append((match.start(), brace_end + 1))
+
+            functions.append(build_function(name, params, modifiers_str, body, match.start()))
+
+        # Parse bare Solidity receive()/fallback() declarations (no "function" keyword).
+        for match in re.finditer(r"\b(receive|fallback)\s*\(\s*\)\s*([^\{;]*)\{", content, re.DOTALL):
+            if any(start <= match.start() < end for start, end in seen_ranges):
+                continue
+            name = match.group(1)
+            modifiers_str = match.group(2).strip()
+
+            brace_start = match.end() - 1
+            brace_end = self._find_matching_brace(content, brace_start)
+            if brace_end == -1:
+                body = ""
+            else:
+                body = content[brace_start + 1:brace_end].strip()
+
+            functions.append(build_function(name, "", modifiers_str, body, match.start()))
         return functions
 
     def _map_type(self, solidity_type: str) -> str:
@@ -1784,10 +1819,15 @@ class Transpiler:
         return self._convert_expression(struct_data)
 
     def convert_function(self, func: dict, contract_name: str = "Contract", modifiers: dict = None) -> str:
-        snake_name = camel_to_snake(func["name"]) if func["name"] else "init"
+        snake_name = "call" if func.get("is_fallback") else camel_to_snake(func["name"]) if func["name"] else "init"
 
         # Build annotation based on function type
-        if func["is_view"]:
+        if func.get("is_fallback"):
+            if func.get("is_payable"):
+                annotation = "#[payable(\"EGLD\")]\n    #[fallback]\n    "
+            else:
+                annotation = "#[fallback]\n    "
+        elif func["is_view"]:
             annotation = f"#[view({func['name']})]\n    "
         elif func["name"]:
             # Check if payable
