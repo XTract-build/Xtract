@@ -199,7 +199,7 @@ const { contractAddress, explorerUrl } = await deployer.deploy({
 | `bytes` | `ManagedBuffer<Self::Api>` |
 | `bytes1`–`bytes32` | `[u8; N]` |
 | `mapping(K => V)` | `MapMapper<Self::Api, K, V>` |
-| `T[]` | `VecMapper<Self::Api, T>` |
+| `T[]` | `VecMapper<T>` | 1-indexed dynamic array |
 | `T[N]` | `ArrayMapper<Self::Api, T, N>` |
 
 ### `bytes` / `bytes32` Cast Inputs
@@ -216,11 +216,30 @@ The expression converter handles `bytes(x)` and `bytes32(x)` according to the in
 
 When adding parser paths that introduce new local symbols, keep `_current_var_types` up to date before expressions that may cast those symbols to `bytes` or `bytes32`. Numeric casts must stay conservative unless the byte width and endian semantics are explicit; prefer warning with guidance to use `.to_bytes_be()` or a contract-specific conversion.
 
+Signed integer note: primitive signed casts (`int8`, `int16`, `int32`, `int64`) map directly to Rust primitives, but `int256` maps to MultiversX `BigInt<Self::Api>`. MultiversX BigInt has limited negative number support compared with Solidity `int256`, especially around storage and arithmetic behavior. The transpiler warns on negative `int256` literal casts and non-literal `int256(...)` casts so developers can verify the generated behavior against the original Solidity contract.
+
+## VecMapper — 1-Indexed Array Access
+
+MultiversX `VecMapper` uses **1-based indexing**, unlike Solidity arrays (0-based).
+The transpiler handles this automatically:
+
+| Solidity | MultiversX Rust |
+|---|---|
+| `arr[]` storage var | `fn arr(&self) -> VecMapper<T>;` |
+| `arr.push(v)` | `self.arr().push(&v)` |
+| `arr.pop()` | `let last_idx = self.arr().len() - 1;` + `self.arr().remove(last_idx);` |
+| `arr.length` | `self.arr().len()` |
+| `arr[i]` (read) | `self.arr().get(i + 1)` |
+
+> **Why `+ 1`?**  `VecMapper::get` is 1-indexed.  Index 0 is out-of-bounds in MultiversX.
+> If your Solidity code already adjusts indices, review the generated `+ 1` manually.
+
 ## Supported Solidity Features
 
 ### Fully supported
 - Contract declarations, constructors, state variables
 - Single and nested mappings
+- Dynamic arrays (`T[]`) — VecMapper with full push/pop/length/index support
 - Events with indexed parameters
 - Custom errors, structs
 - Public/private/view/payable functions
@@ -238,8 +257,14 @@ When adding parser paths that introduce new local symbols, keep `_current_var_ty
 - **Inline assembly** — replaced with `// TODO: inline assembly removed — no MultiversX equivalent`. Requires manual rewrite using Rust/SC APIs.
 - **Try-catch blocks** — replaced with `// TODO: try-catch block removed — implement error handling manually`. Replace with async callbacks or `require!` guards.
 
+### Cryptographic builtins (mapped with warnings)
+- `keccak256(data)` → `self.crypto().keccak256(&data)` — input must be a `ManagedBuffer`
+- `sha256(data)` → `self.crypto().sha256(&data)` — input must be a `ManagedBuffer`
+- `ecrecover(hash, v, r, s)` → `ManagedAddress::zero() /* TODO */` — no on-chain equivalent; use off-chain verification
+
 ### Not yet supported
 - Libraries, diamond inheritance
+- `ecrecover` (stubbed with TODO and warning)
 
 ### Supported since v1.0
 - Do-while loops → `loop { ... if !cond { break } }`
@@ -247,6 +272,14 @@ When adding parser paths that introduce new local symbols, keep `_current_var_ty
 - `delete var` → `.clear()`
 - `unchecked { }` → passthrough with comment
 - Constructor parameters → emitted in `#[init]` signature with type mapping
+- `msg.sender` → `self.blockchain().get_caller()`
+- `block.timestamp` / `now` → `self.blockchain().get_block_timestamp()`
+- `block.number` → `self.blockchain().get_block_nonce()`
+- `address(this)` → `self.blockchain().get_sc_address()`
+- `tx.origin` → `self.blockchain().get_caller()` + warning (see note below)
+- `type(uint256).max` / `type(uint256).min` → `BigUint::from(u64::MAX)` / `BigUint::zero()` with TODO
+
+> **`tx.origin` on MultiversX:** On EVM, `tx.origin` is the originating EOA; on MultiversX there is no such distinction — the caller is always the direct caller. XTract maps `tx.origin` to `get_caller()` and emits a warning. Review any access-control logic that relies on `tx.origin != msg.sender`.
 
 ### Constructor parameter mapping
 
@@ -319,7 +352,7 @@ pub trait SimpleStorage {
 
 1. **Start simple** — validate transpiler output on basic contracts before migrating complex DeFi logic.
 2. **Always review output** — check generated function bodies, especially around arithmetic and state mutations.
-3. **Payment handling** — Solidity's `msg.value` / ether model maps to `#[payable("EGLD")]` in MultiversX; review payable functions carefully.
+3. **Payment handling** — Solidity's `msg.value` maps to `self.call_value().egld_value()` in MultiversX; payable functions are annotated with `#[payable("EGLD")]` automatically. `msg.sender` maps to `self.blockchain().get_caller()`. `msg.data` and `msg.sig` have no direct equivalent and emit TODO stubs with warnings — these require manual conversion.
 4. **Test on devnet first** — use `--network devnet` until you're confident in the contract behaviour.
 5. **Keep your mnemonic** — `xtract wallet create` shows it once; there is no recovery path.
 

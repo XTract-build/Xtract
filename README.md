@@ -70,7 +70,11 @@ v1.0 adds the full deployment pipeline on top of the transpiler. See [docs/v1.0/
 ### Advanced Features
 - **Function modifiers**: `onlyOwner`, `whenNotPaused`, custom modifiers
 - **Basic inheritance**: Contract inheritance with supertrait generation
-- **Enhanced diagnostics**: Detailed warnings for unsupported features
+- **Enhanced diagnostics**: Detailed warnings for unsupported features and semantic differences, including `int256` casts that rely on MultiversX `BigInt` negative values
+
+### Signed Integer Limitation
+
+`int8`, `int16`, `int32`, and `int64` casts map to Rust `i8`, `i16`, `i32`, and `i64`. `int256` maps to MultiversX `BigInt<Self::Api>`, which has more limited negative number support than Solidity `int256`; review warnings on negative literals or variable casts before relying on equivalent storage or arithmetic behavior.
 
 **Test Coverage**: 100% unit test success across 50 Solidity contracts with 64 test functions.
 
@@ -199,6 +203,8 @@ cat MyStorage.rs
 - Events with indexed parameters
 - Custom errors, structs
 - Functions (public, private, view, payable)
+- `msg.value` → `self.call_value().egld_value()`
+- `msg.sender` → `self.blockchain().get_caller()`
 - Function modifiers — full pre/post body inlining, including `nonReentrant`
 - Basic inheritance (`contract A is B, C`)
 - `require` / `revert`, if/else, for loops, while loops, do-while loops

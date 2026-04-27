@@ -76,6 +76,7 @@ class Transpiler:
         self._storage_var_types: dict[str, str] = {}
         self._current_var_types: dict[str, str] = {}
         self._mapping_var_names: dict[str, int] = {}  # name → number of keys
+        self._array_var_names: set[str] = set()  # VecMapper array variables
         self._using_for: dict[str, str] = {}   # type_name -> library_name
         self._warnings: list[TranspilationWarning] = []
 
@@ -829,6 +830,14 @@ class Transpiler:
                     })
                 continue
 
+            # Handle array .pop() — removes the last element
+            if pop_match := re.match(r'(\w+)\.pop\s*\(\s*\)', line):
+                statements.append({
+                    "type": "pop",
+                    "array_name": pop_match.group(1),
+                })
+                continue
+
             # Handle struct initialization and push
             if push_match := re.match(r'(\w+)\.push\s*\((.+)\)', line):
                 array_name = push_match.group(1)
@@ -1004,7 +1013,16 @@ class Transpiler:
         elif stmt_type == "push":
             array_name = stmt["array_name"]
             struct_data = self._convert_struct_initialization(stmt["struct_data"])
-            return f'        self.{array_name}().push(&{struct_data});'
+            snake = camel_to_snake(array_name)
+            return f'        self.{snake}().push(&{struct_data});'
+
+        elif stmt_type == "pop":
+            array_name = stmt["array_name"]
+            snake = camel_to_snake(array_name)
+            return (
+                f'        let last_idx = self.{snake}().len() - 1;\n'
+                f'        self.{snake}().remove(last_idx);'
+            )
 
         elif stmt_type == "struct_field_update":
             struct_var = stmt["struct_var"]
@@ -1426,6 +1444,32 @@ class Transpiler:
             cond, then_expr, else_expr = ternary
             return f'if {self._convert_expression(cond)} {{ {self._convert_expression(then_expr)} }} else {{ {self._convert_expression(else_expr)} }}'
 
+        # Handle keccak256(data) → self.crypto().keccak256(&data_as_managed_buffer)
+        keccak_match = re.match(r'^keccak256\((.+)\)$', expr.strip(), re.DOTALL)
+        if keccak_match:
+            inner = self._convert_expression(keccak_match.group(1).strip())
+            self._warnings.append(TranspilationWarning(
+                "keccak256 mapped to self.crypto().keccak256() — ensure input is converted to ManagedBuffer"
+            ))
+            return f'self.crypto().keccak256(&{inner})'
+
+        # Handle sha256(data) → self.crypto().sha256(&data_as_managed_buffer)
+        sha256_match = re.match(r'^sha256\((.+)\)$', expr.strip(), re.DOTALL)
+        if sha256_match:
+            inner = self._convert_expression(sha256_match.group(1).strip())
+            self._warnings.append(TranspilationWarning(
+                "sha256 mapped to self.crypto().sha256() — ensure input is converted to ManagedBuffer"
+            ))
+            return f'self.crypto().sha256(&{inner})'
+
+        # Handle ecrecover(hash, v, r, s) — no MultiversX equivalent
+        ecrecover_match = re.match(r'^ecrecover\((.+)\)$', expr.strip(), re.DOTALL)
+        if ecrecover_match:
+            self._warnings.append(TranspilationWarning(
+                "ecrecover has no MultiversX equivalent — manual implementation required"
+            ))
+            return 'ManagedAddress::zero() /* TODO: ecrecover — no direct MultiversX equivalent, use off-chain verification */'
+
         # Handle bare new ContractType(args) used as an expression (without assignment)
         if re.match(r'new\s+\w+\s*\([^)]*\)', expr.strip()):
             self._warnings.append(TranspilationWarning(
@@ -1437,18 +1481,21 @@ class Transpiler:
         int256_cast = re.match(r'^int256\((.+)\)$', expr.strip())
         if int256_cast:
             inner = int256_cast.group(1).strip()
-            # Negative literal: int256(-5) → BigInt::from(-5i64) + warning
+            # Negative literal: int256(-5) -> BigInt::from(-5i64) + warning
             neg_lit = re.match(r'^-(\d+)$', inner)
             if neg_lit:
                 self._warnings.append(TranspilationWarning(
-                    "int256 cast of negative literal: ensure value fits in i64"
+                    "Negative BigInt value — MultiversX BigInt has limited negative number support; verify arithmetic behavior matches Solidity int256"
                 ))
                 return f'BigInt::from(-{neg_lit.group(1)}i64)'
-            # Positive literal: int256(42) → BigInt::from(42i64)
+            # Positive literal: int256(42) -> BigInt::from(42i64)
             pos_lit = re.match(r'^(\d+)$', inner)
             if pos_lit:
                 return f'BigInt::from({pos_lit.group(1)}i64)'
-            # Variable or expression: int256(someVar) → BigInt::from(someVar)
+            # Variable or expression: int256(someVar) -> BigInt::from(someVar)
+            self._warnings.append(TranspilationWarning(
+                "int256 cast — ensure variable is compatible with MultiversX BigInt; negative values may behave differently than Solidity int256"
+            ))
             return f'BigInt::from({inner})'
 
         # Handle bool(x) type casts
@@ -1467,14 +1514,76 @@ class Transpiler:
         # Handle msg.sender
         expr = expr.replace("msg.sender", "self.blockchain().get_caller()")
 
-        # Handle block.timestamp
+        # Handle msg.value
+        expr = expr.replace("msg.value", "self.call_value().egld_value()")
+
+        # Handle msg.data (not directly mappable — emit TODO stub with warning)
+        if "msg.data" in expr:
+            self._warnings.append(TranspilationWarning(
+                "msg.data has no direct MultiversX equivalent — manual conversion to ManagedBuffer required"
+            ))
+            expr = expr.replace("msg.data", "{ /* TODO: msg.data → ManagedBuffer — manual conversion required */ ManagedBuffer::new() }")
+
+        # Handle msg.sig (function selector — not applicable in MultiversX)
+        if "msg.sig" in expr:
+            self._warnings.append(TranspilationWarning(
+                "msg.sig (function selector) has no MultiversX equivalent — remove or redesign this logic"
+            ))
+            expr = expr.replace("msg.sig", "{ /* TODO: msg.sig has no MultiversX equivalent */ ManagedBuffer::new() }")
+
+        # Handle block.timestamp / now (Solidity alias)
         expr = expr.replace("block.timestamp", "self.blockchain().get_block_timestamp()")
+        expr = expr.replace("now", "self.blockchain().get_block_timestamp()")
+
+        # Handle block.number
+        expr = expr.replace("block.number", "self.blockchain().get_block_nonce()")
+
+        # Handle address(this)
+        expr = expr.replace("address(this)", "self.blockchain().get_sc_address()")
+
+        # Handle tx.origin
+        if "tx.origin" in expr:
+            self._warnings.append(TranspilationWarning(
+                "tx.origin mapped to get_caller() — note: on MultiversX these are always the same, unlike EVM"
+            ))
+            expr = expr.replace("tx.origin", "self.blockchain().get_caller()")
+
+        # Handle type(...).max / type(...).min
+        def replace_type_minmax(m: re.Match) -> str:
+            type_name = m.group(1)
+            bound = m.group(2)  # 'max' or 'min'
+            if type_name == 'uint256':
+                if bound == 'max':
+                    # TODO: true uint256 max is 2^256-1; u64::MAX is a conservative stand-in
+                    return '/* TODO: type(uint256).max — true max is 2^256-1 */ BigUint::from(u64::MAX)'
+                else:  # min
+                    return 'BigUint::zero()'
+            if type_name == 'int256':
+                if bound == 'max':
+                    return '/* TODO: type(int256).max — true max is 2^255-1 */ BigInt::from(i64::MAX)'
+                else:
+                    return '/* TODO: type(int256).min — true min is -(2^255) */ BigInt::from(i64::MIN)'
+            # Generic fallback
+            return m.group(0)
+
+        expr = re.sub(r'\btype\(\s*(u?int\d*)\s*\)\s*\.\s*(max|min)\b', replace_type_minmax, expr)
+
 
         # Handle simple arithmetic and comparisons (basic cases)
         # This would need to be much more sophisticated for complex expressions
 
-        # Handle array length
-        expr = expr.replace(".length", ".len()")
+        # Handle array/storage .length → .len() called directly on the VecMapper.
+        # Replace VARNAME.length with self.var_name().len() for known array vars,
+        # or VARNAME.len() for everything else (generic fallback).
+        def replace_length(m: re.Match) -> str:
+            var = m.group(1)
+            if var in self._array_var_names:
+                return f'self.{camel_to_snake(var)}().len()'
+            if var in self._storage_var_names:
+                # SingleValueMapper — .len() is likely wrong, but preserve prior behaviour
+                return f'self.{camel_to_snake(var)}().get().len()'
+            return f'{var}.len()'
+        expr = re.sub(r'\b(\w+)\.length\b', replace_length, expr)
 
         # Handle power operator (limited)
         expr = expr.replace("**", ".pow")
@@ -1569,6 +1678,19 @@ class Transpiler:
         # Replace standalone numbers (avoid numbers already in function calls)
         expr = re.sub(r'(?<!::from\()\b(\d+)\b(?!u32|u64|u16|u8|i32|i64|i16|i8)', replace_number, expr)
 
+        # Handle VecMapper array indexing BEFORE variable substitution so the variable
+        # name is still in its original camelCase form.  someArray[i] → self.some_array().get(i + 1)
+        # (VecMapper is 1-indexed in MultiversX).
+        if self._array_var_names:
+            def replace_array_index(m: re.Match) -> str:
+                var = m.group(1)
+                if var in self._array_var_names:
+                    raw_idx = m.group(2).strip()
+                    converted_idx = self._convert_expression(raw_idx)
+                    return f'self.{camel_to_snake(var)}().get({converted_idx} + 1)'
+                return m.group(0)
+            expr = re.sub(r'\b(\w+)\[([^\]]+)\]', replace_array_index, expr)
+
         # Handle variable access - convert simple variable names to storage getters
         # This is a simple heuristic - in a full implementation we'd need proper symbol resolution
         # Only exclude language keywords and boolean literals here.
@@ -1586,6 +1708,9 @@ class Transpiler:
             elif var in self._storage_var_names:
                 return f'self.{camel_to_snake(var)}().get()'
             elif var in self._mapping_var_names:
+                return f'self.{camel_to_snake(var)}()'
+            elif var in self._array_var_names:
+                # Standalone array reference (e.g. passed to a function) — return the VecMapper
                 return f'self.{camel_to_snake(var)}()'
             else:
                 return var
@@ -1719,9 +1844,19 @@ class Transpiler:
         # Strip struct/function/modifier bodies so their fields are not captured as storage vars
         content_no_bodies = re.sub(r'\bstruct\s+\w+\s*\{[^}]*\}', '', content, flags=re.DOTALL)
 
+        # Array variables (uint256[], address[], etc.) → VecMapper
+        for match in re.finditer(
+            r"(uint256|uint128|uint64|uint32|uint16|uint8|int256|int128|int64|int32|int16|int8|string|address|bool)\s*\[\s*\]"
+            r"(?:\s+(?:public|private|internal|external))?\s+(\w+)\s*;",
+            content_no_bodies,
+        ):
+            vars.append(("array", match.group(2), match.group(1)))
+
         # Simple variables (uint256, address, etc.)
         for match in re.finditer(r"(uint256|uint128|uint64|uint32|uint16|uint8|int256|int128|int64|int32|int16|int8|string|bytes|bytes32|bytes20|address|bool|u8)(?:\s+(?:public|private|internal|external))?\s+(\w+)\s*;", content_no_bodies):
-            vars.append((match.group(1), match.group(2), ""))
+            # Skip names already captured as arrays
+            if not any(v[1] == match.group(2) for v in vars):
+                vars.append((match.group(1), match.group(2), ""))
 
         # Nested mappings: mapping(type1 => mapping(type2 => type3))
         for match in re.finditer(r"mapping\s*\(\s*(\w+)\s*=>\s*mapping\s*\(\s*(\w+)\s*=>\s*(\w+)\s*\)\s*\)\s*(?:public|private|internal|external)?\s*(\w+)\s*;", content):
@@ -1745,6 +1880,9 @@ class Transpiler:
 
     def _convert_storage_mapper(self, var_type: str, var_name: str, mapping_info: str = "") -> str:
         """Convert storage variable to appropriate mapper type"""
+        if var_type == "array":
+            elem_type = self._map_type(mapping_info) if mapping_info else "BigUint<Self::Api>"
+            return f"VecMapper<{elem_type}>"
         if var_type == "nested_mapping":
             # Parse key1=>key2=>value nested mapping
             parts = mapping_info.split("=>")
@@ -1889,7 +2027,7 @@ class Transpiler:
         # Build lookup sets used by _convert_expression and _convert_statement
         self._storage_var_names = {
             var_name for var_type, var_name, _ in storage
-            if var_type not in ("mapping", "nested_mapping")
+            if var_type not in ("mapping", "nested_mapping", "array")
         }
         self._storage_var_types = {
             var_name: var_type for var_type, var_name, _ in storage
@@ -1899,6 +2037,10 @@ class Transpiler:
             var_name: (2 if var_type == "nested_mapping" else 1)
             for var_type, var_name, _ in storage
             if var_type in ("mapping", "nested_mapping")
+        }
+        self._array_var_names = {
+            var_name for var_type, var_name, _ in storage
+            if var_type == "array"
         }
 
         lines: list[str] = []
@@ -1938,7 +2080,10 @@ class Transpiler:
             mapper_t = self._convert_storage_mapper(var_type, var_name, mapping_info)
             snake_name = camel_to_snake(var_name)
 
-            if var_type == "nested_mapping":
+            if var_type == "array":
+                lines.append(f"    #[storage_mapper(\"{var_name}\")]")
+                lines.append(f"    fn {snake_name}(&self) -> {mapper_t};")
+            elif var_type == "nested_mapping":
                 # Parse key1=>key2=>value nested mapping
                 parts = mapping_info.split("=>")
                 if len(parts) == 3:

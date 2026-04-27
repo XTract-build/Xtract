@@ -527,22 +527,22 @@ def test_int256_cast_positive_literal():
 
 
 def test_int256_cast_negative_literal_emits_warning():
-    """int256(-5) → BigInt::from(-5i64) and a warning is emitted"""
+    """int256(-1) -> BigInt::from(-1i64) and a warning is emitted"""
     sol = """
     // SPDX-License-Identifier: MIT
     pragma solidity ^0.8.0;
 
     contract CastTest {
         function cast() public pure returns (int256) {
-            return int256(-5);
+            return int256(-1);
         }
     }
     """
     transpiler = Transpiler()
-    result = transpiler.convert(sol)
-    assert "BigInt::from(-5i64)" in result
-    warning_messages = [w.message for w in transpiler._warnings]
-    assert any("int256" in msg and "negative" in msg.lower() for msg in warning_messages)
+    result = transpiler.convert_with_diagnostics(sol)
+    assert "BigInt::from(-1i64)" in result.code
+    warning_messages = [w.message for w in result.warnings]
+    assert any("Negative BigInt value" in msg for msg in warning_messages)
 
 
 def test_bool_cast_from_one():
@@ -851,3 +851,233 @@ def test_assembly_stripped():
     result = Transpiler().convert(sol)
     assert "// TODO: inline assembly removed" in result, "Expected TODO comment for assembly"
     assert "assembly {" not in result, "Raw assembly block must not appear in output"
+
+
+def test_keccak256_maps_to_crypto_api():
+    """keccak256(data) must map to self.crypto().keccak256() with a warning"""
+    t = Transpiler()
+    result = t._convert_expression("keccak256(data)")
+    assert "self.crypto().keccak256(" in result, f"Got: {result!r}"
+    warning_messages = [w.message for w in t._warnings]
+    assert any("keccak256" in msg and "ManagedBuffer" in msg for msg in warning_messages)
+
+
+def test_sha256_maps_to_crypto_api():
+    """sha256(data) must map to self.crypto().sha256() with a warning"""
+    t = Transpiler()
+    result = t._convert_expression("sha256(data)")
+    assert "self.crypto().sha256(" in result, f"Got: {result!r}"
+    warning_messages = [w.message for w in t._warnings]
+    assert any("sha256" in msg and "ManagedBuffer" in msg for msg in warning_messages)
+
+
+def test_ecrecover_emits_stub_and_warning():
+    """ecrecover(...) must emit a TODO stub and a warning about no MultiversX equivalent"""
+    t = Transpiler()
+    result = t._convert_expression("ecrecover(hash, v, r, s)")
+    assert "ManagedAddress::zero()" in result, f"Got: {result!r}"
+    assert "TODO" in result and "ecrecover" in result, f"Got: {result!r}"
+    warning_messages = [w.message for w in t._warnings]
+    assert any("ecrecover" in msg and "no MultiversX equivalent" in msg for msg in warning_messages)
+
+
+def test_keccak256_in_full_contract():
+    """keccak256 used inside a contract function produces crypto API call in output"""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+
+    contract HashTest {
+        function getHash(bytes memory data) public view returns (bytes32) {
+            return keccak256(data);
+        }
+    }
+    """
+    transpiler = Transpiler()
+    result = transpiler.convert(sol)
+    assert "self.crypto().keccak256(" in result
+    warning_messages = [w.message for w in transpiler._warnings]
+    assert any("keccak256" in msg for msg in warning_messages)
+
+
+# ── Array operation tests ─────────────────────────────────────────────────────
+
+_ARRAY_CONTRACT = """
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract ArrayOps {
+    uint256[] public items;
+
+    function popLast() public {
+        items.pop();
+    }
+
+    function getLength() public view returns (uint256) {
+        return items.length;
+    }
+
+    function getAt(uint256 i) public view returns (uint256) {
+        return items[i];
+    }
+}
+"""
+
+
+def test_array_pop():
+    """items.pop() must emit a two-line remove-last-element pattern for VecMapper."""
+    result = Transpiler().convert(_ARRAY_CONTRACT)
+    assert "self.items().len() - 1" in result, "Expected len()-based last-index calculation"
+    assert "self.items().remove(" in result, "Expected .remove() call for .pop()"
+
+
+def test_array_length():
+    """items.length must emit self.items().len(), NOT self.items().get().len()."""
+    result = Transpiler().convert(_ARRAY_CONTRACT)
+    assert "self.items().len()" in result, "Expected .len() called directly on VecMapper"
+    assert ".get().len()" not in result, "Must not call .get() before .len() on a VecMapper"
+
+
+def test_array_index_read():
+    """items[i] in an expression must emit self.items().get(i + 1) (VecMapper is 1-indexed)."""
+    result = Transpiler().convert(_ARRAY_CONTRACT)
+    assert "self.items().get(" in result, "Expected .get() for VecMapper indexed read"
+    assert "+ 1)" in result, "Expected 1-indexed offset for VecMapper"
+
+
+def test_array_storage_mapper_type():
+    """A Solidity uint256[] storage var must produce a VecMapper in the trait definition."""
+    result = Transpiler().convert(_ARRAY_CONTRACT)
+    assert "VecMapper<" in result, "Expected VecMapper type for array storage variable"
+
+
+def test_block_number():
+    """block.number should transpile to self.blockchain().get_block_nonce()"""
+    t = Transpiler()
+    result = t._convert_expression("block.number")
+    assert result == "self.blockchain().get_block_nonce()", f"Got: {result!r}"
+
+
+def test_address_this():
+    """address(this) should transpile to self.blockchain().get_sc_address()"""
+    t = Transpiler()
+    result = t._convert_expression("address(this)")
+    assert result == "self.blockchain().get_sc_address()", f"Got: {result!r}"
+
+
+def test_type_uint256_max():
+    """type(uint256).max should transpile to BigUint::from(u64::MAX) with a TODO comment"""
+    t = Transpiler()
+    result = t._convert_expression("type(uint256).max")
+    assert "BigUint::from(u64::MAX)" in result, f"Got: {result!r}"
+    assert "TODO" in result, f"Expected TODO comment in: {result!r}"
+
+
+def test_type_uint256_min():
+    """type(uint256).min should transpile to BigUint::zero()"""
+    t = Transpiler()
+    result = t._convert_expression("type(uint256).min")
+    assert result == "BigUint::zero()", f"Got: {result!r}"
+
+
+def test_now_alias():
+    """Solidity `now` alias should transpile to self.blockchain().get_block_timestamp()"""
+    t = Transpiler()
+    result = t._convert_expression("now")
+    assert result == "self.blockchain().get_block_timestamp()", f"Got: {result!r}"
+
+
+def test_tx_origin_maps_to_caller_with_warning():
+    """tx.origin should transpile to get_caller() and emit a warning"""
+    t = Transpiler()
+    result = t._convert_expression("tx.origin")
+    assert "get_caller()" in result, f"Got: {result!r}"
+    assert any("tx.origin" in w.message for w in t._warnings), "Expected warning about tx.origin"
+
+
+def test_msg_value_maps_to_egld_value():
+    """Test that msg.value in require() is rewritten to self.call_value().egld_value()"""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+
+    contract Shop {
+        uint256 public price;
+
+        function buy() public payable {
+            require(msg.value >= price, "Insufficient payment");
+        }
+    }
+    """
+    result = Transpiler().convert(sol)
+    assert "self.call_value().egld_value()" in result, (
+        "Expected msg.value to be converted to self.call_value().egld_value()"
+    )
+    assert "msg.value" not in result, "msg.value should not appear in output"
+    assert "require!" in result, "Expected require! macro in output"
+
+
+def test_msg_sender_maps_to_get_caller():
+    """Test that msg.sender is rewritten to self.blockchain().get_caller()"""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+
+    contract Owned {
+        address public owner;
+
+        constructor() {
+            owner = msg.sender;
+        }
+    }
+    """
+    result = Transpiler().convert(sol)
+    assert "self.blockchain().get_caller()" in result, (
+        "Expected msg.sender to be converted to self.blockchain().get_caller()"
+    )
+    assert "msg.sender" not in result, "msg.sender should not appear in output"
+
+
+def test_msg_data_emits_warning_and_stub():
+    """Test that msg.data emits a TranspilationWarning and a ManagedBuffer stub"""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+
+    contract DataReader {
+        function getCallData() public view returns (bytes memory) {
+            return msg.data;
+        }
+    }
+    """
+    transpiler = Transpiler()
+    result = transpiler.convert(sol)
+
+    warning_messages = [w.message for w in transpiler._warnings]
+    assert any("msg.data" in msg for msg in warning_messages), (
+        "Expected a TranspilationWarning about msg.data"
+    )
+    assert "ManagedBuffer" in result, "Expected ManagedBuffer stub in output"
+    assert "TODO" in result, "Expected TODO stub in output"
+
+
+def test_msg_sig_emits_warning_and_stub():
+    """Test that msg.sig emits a TranspilationWarning and a TODO stub"""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+
+    contract SigReader {
+        function getSelector() public view returns (bytes4) {
+            return msg.sig;
+        }
+    }
+    """
+    transpiler = Transpiler()
+    result = transpiler.convert(sol)
+
+    warning_messages = [w.message for w in transpiler._warnings]
+    assert any("msg.sig" in msg for msg in warning_messages), (
+        "Expected a TranspilationWarning about msg.sig"
+    )
+    assert "TODO" in result, "Expected a TODO stub in output"

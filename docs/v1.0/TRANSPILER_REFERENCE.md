@@ -13,7 +13,7 @@ Full feature coverage for the v1.0 transpiler (`xtract/transpiler.py`).
 | `uint32` | `u32` | |
 | `uint16` | `u16` | |
 | `uint8` | `u8` | |
-| `int256` | `BigInt<Self::Api>` | |
+| `int256` | `BigInt<Self::Api>` | MultiversX BigInt has limited negative number support; negative literal casts emit a warning |
 | `int64` / `int32` / `int16` / `int8` | `i64` / `i32` / `i16` / `i8` | |
 | `address` | `ManagedAddress<Self::Api>` | |
 | `string` | `ManagedBuffer<Self::Api>` | |
@@ -22,8 +22,10 @@ Full feature coverage for the v1.0 transpiler (`xtract/transpiler.py`).
 | `bool` | `bool` | |
 | `mapping(K => V)` | `SingleValueMapper` / `MapMapper` | key-parameterised storage fn |
 | `mapping(K => mapping(K2 => V))` | multi-key storage mapper | |
-| `T[]` | `VecMapper<Self::Api, T>` | |
+| `T[]` | `VecMapper<T>` | dynamic-length array; 1-indexed |
 | `T[N]` | `ArrayMapper<Self::Api, T, N>` | |
+
+`int256(...)` casts are emitted as `BigInt::from(...)`. Negative literals emit `BigInt::from(-Ni64)` plus a diagnostic warning because MultiversX BigInt negative values can behave differently from Solidity `int256` in storage and arithmetic. Non-literal `int256(...)` casts also warn so the source variable's signedness and runtime range can be verified.
 
 ---
 
@@ -49,7 +51,7 @@ Numeric casts to bytes require manual review because the correct byte order and 
 |---|---|---|
 | `uint256` | `BigUint<Self::Api>` | |
 | `uint64/32/16/8` | `u64/u32/u16/u8` | |
-| `int256` | `BigInt<Self::Api>` | |
+| `int256` | `BigInt<Self::Api>` | Limited negative value semantics compared with Solidity `int256` |
 | `address` | `ManagedAddress<Self::Api>` | |
 | `string` | `ManagedBuffer<Self::Api>` | |
 | `bool` | `bool` | |
@@ -63,6 +65,10 @@ Numeric casts to bytes require manual review because the correct byte order and 
 | `nonReentrant` | `locked.set(true)` / `locked.set(false)` around body | |
 | Function visibility | `pub` / private / `#[view]` / `#[endpoint]` | |
 | Payable functions | `#[payable("EGLD")]` | |
+| `msg.sender` | `self.blockchain().get_caller()` | |
+| `msg.value` | `self.call_value().egld_value()` | payable function must use `#[payable("EGLD")]` |
+| `msg.data` | `ManagedBuffer::new()` stub | emits `TranspilationWarning`; manual conversion required |
+| `msg.sig` | TODO stub | emits `TranspilationWarning`; no MultiversX equivalent |
 | Constructor | `#[init]` fn with parameters | parameters mapped via type table |
 | Inheritance (`is A`) | supertrait | |
 | `require()` | `require!()` | |
@@ -79,6 +85,52 @@ Numeric casts to bytes require manual review because the correct byte order and 
 | Mapping read in expression | `.get()` appended automatically | scoped to known storage vars |
 | Mapping write (assignment) | `.set()` emitted | |
 | Function parameter `.clone()` | emitted for all params, not just `_to`/`_from` | uses actual param introspection |
+| `array[]` storage variable | `VecMapper<T>` trait fn | declared as `fn name(&self) -> VecMapper<T>;` |
+| `array.push(v)` | `self.array().push(&v)` | |
+| `array.pop()` | `let last = self.array().len() - 1; self.array().remove(last);` | two-statement expansion |
+| `array.length` | `self.array().len()` | called on VecMapper directly, not `.get().len()` |
+| `array[i]` (read) | `self.array().get(i + 1)` | VecMapper is 1-indexed |
+| `msg.sender` | `self.blockchain().get_caller()` | |
+| `block.timestamp` | `self.blockchain().get_block_timestamp()` | |
+| `block.number` | `self.blockchain().get_block_nonce()` | |
+| `address(this)` | `self.blockchain().get_sc_address()` | |
+| `now` | `self.blockchain().get_block_timestamp()` | Solidity alias for `block.timestamp` |
+| `tx.origin` | `self.blockchain().get_caller()` | emits warning — see behavioral note below |
+| `type(uint256).max` | `BigUint::from(u64::MAX)` | TODO comment: true max is 2^256-1 |
+| `type(uint256).min` | `BigUint::zero()` | |
+| `type(int256).max` | `BigInt::from(i64::MAX)` | TODO comment: true max is 2^255-1 |
+| `type(int256).min` | `BigInt::from(i64::MIN)` | TODO comment: true min is -(2^255) |
+
+---
+
+## Cryptography
+
+| Solidity | MultiversX output | Notes |
+|---|---|---|
+| `keccak256(data)` | `self.crypto().keccak256(&data)` | Input must be a `ManagedBuffer`; a transpilation warning is emitted |
+| `sha256(data)` | `self.crypto().sha256(&data)` | Input must be a `ManagedBuffer`; a transpilation warning is emitted |
+| `ecrecover(hash, v, r, s)` | `ManagedAddress::zero() /* TODO */` | No MultiversX equivalent — use off-chain verification; a transpilation warning is emitted |
+
+### ManagedBuffer conversion
+
+The `self.crypto()` API expects a `&ManagedBuffer` argument. If the input in your Solidity contract is `bytes` or `bytes32`, convert it before hashing:
+
+```rust
+let buf = ManagedBuffer::from(data.as_slice());
+let hash = self.crypto().keccak256(&buf);
+```
+
+---
+
+## Behavioral Notes
+
+### `tx.origin` vs `msg.sender` on MultiversX
+
+On EVM, `tx.origin` is the original EOA that initiated the transaction, while `msg.sender` is the immediate caller (which may be a contract). On MultiversX, there is no equivalent distinction — the caller is always the direct caller. XTract maps `tx.origin` to `self.blockchain().get_caller()` and emits a `TranspilationWarning` to flag this semantic difference for manual review.
+
+### `type(uint256).max`
+
+The true uint256 maximum is 2^256-1, which exceeds `u64::MAX`. XTract emits `BigUint::from(u64::MAX)` as a conservative placeholder with a TODO comment. Replace with the correct `BigUint` construction if your contract depends on the exact value.
 
 ---
 
@@ -93,6 +145,7 @@ Numeric casts to bytes require manual review because the correct byte order and 
 | `abi.encodeWithSelector` | Partial | Manual `ManagedBuffer` |
 | Diamond inheritance | Complex trait resolution | Flatten inheritance manually |
 | Libraries | Not emitted | Inline library logic |
+| `ecrecover` | No on-chain equivalent | Verify signatures off-chain |
 
 ---
 
