@@ -107,7 +107,7 @@ contract Subscription {
         require(planId < servicePlans[service].length, "Invalid plan");
         Plan storage plan = servicePlans[service][planId];
         require(plan.active, "Plan not active");
-        require(msg.value >= plan.price, "Insufficient payment");
+        require(msg.value == plan.price, "Exact payment required");
 
         uint256 expiresAt = block.timestamp + plan.duration;
         subscriptions[msg.sender][service] = SubscriptionRecord({
@@ -129,7 +129,7 @@ contract Subscription {
         require(!sub.cancelled, "Subscription cancelled");
         Plan storage plan = servicePlans[service][sub.planId];
         require(plan.active, "Plan not active");
-        require(msg.value >= plan.price, "Insufficient payment");
+        require(msg.value == plan.price, "Exact payment required");
 
         uint256 base = sub.expiresAt > block.timestamp ? sub.expiresAt : block.timestamp;
         sub.expiresAt = base + plan.duration;
