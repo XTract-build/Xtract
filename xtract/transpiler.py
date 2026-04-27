@@ -1426,18 +1426,21 @@ class Transpiler:
         int256_cast = re.match(r'^int256\((.+)\)$', expr.strip())
         if int256_cast:
             inner = int256_cast.group(1).strip()
-            # Negative literal: int256(-5) → BigInt::from(-5i64) + warning
+            # Negative literal: int256(-5) -> BigInt::from(-5i64) + warning
             neg_lit = re.match(r'^-(\d+)$', inner)
             if neg_lit:
                 self._warnings.append(TranspilationWarning(
-                    "int256 cast of negative literal: ensure value fits in i64"
+                    "Negative BigInt value — MultiversX BigInt has limited negative number support; verify arithmetic behavior matches Solidity int256"
                 ))
                 return f'BigInt::from(-{neg_lit.group(1)}i64)'
-            # Positive literal: int256(42) → BigInt::from(42i64)
+            # Positive literal: int256(42) -> BigInt::from(42i64)
             pos_lit = re.match(r'^(\d+)$', inner)
             if pos_lit:
                 return f'BigInt::from({pos_lit.group(1)}i64)'
-            # Variable or expression: int256(someVar) → BigInt::from(someVar)
+            # Variable or expression: int256(someVar) -> BigInt::from(someVar)
+            self._warnings.append(TranspilationWarning(
+                "int256 cast — ensure variable is compatible with MultiversX BigInt; negative values may behave differently than Solidity int256"
+            ))
             return f'BigInt::from({inner})'
 
         # Handle bool(x) type casts
@@ -2092,5 +2095,4 @@ def transpile_with_diagnostics(input_path: Path, output_path: Path) -> Transpila
         output_path.write_text(result.code)
 
     return result
-
 

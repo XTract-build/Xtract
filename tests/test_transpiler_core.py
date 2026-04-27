@@ -527,22 +527,22 @@ def test_int256_cast_positive_literal():
 
 
 def test_int256_cast_negative_literal_emits_warning():
-    """int256(-5) → BigInt::from(-5i64) and a warning is emitted"""
+    """int256(-1) -> BigInt::from(-1i64) and a warning is emitted"""
     sol = """
     // SPDX-License-Identifier: MIT
     pragma solidity ^0.8.0;
 
     contract CastTest {
         function cast() public pure returns (int256) {
-            return int256(-5);
+            return int256(-1);
         }
     }
     """
     transpiler = Transpiler()
-    result = transpiler.convert(sol)
-    assert "BigInt::from(-5i64)" in result
-    warning_messages = [w.message for w in transpiler._warnings]
-    assert any("int256" in msg and "negative" in msg.lower() for msg in warning_messages)
+    result = transpiler.convert_with_diagnostics(sol)
+    assert "BigInt::from(-1i64)" in result.code
+    warning_messages = [w.message for w in result.warnings]
+    assert any("Negative BigInt value" in msg for msg in warning_messages)
 
 
 def test_bool_cast_from_one():
