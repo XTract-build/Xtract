@@ -13,7 +13,7 @@ Full feature coverage for the v1.0 transpiler (`xtract/transpiler.py`).
 | `uint32` | `u32` | |
 | `uint16` | `u16` | |
 | `uint8` | `u8` | |
-| `int256` | `BigInt<Self::Api>` | |
+| `int256` | `BigInt<Self::Api>` | MultiversX BigInt has limited negative number support; negative literal casts emit a warning |
 | `int64` / `int32` / `int16` / `int8` | `i64` / `i32` / `i16` / `i8` | |
 | `address` | `ManagedAddress<Self::Api>` | |
 | `string` | `ManagedBuffer<Self::Api>` | |
@@ -25,6 +25,8 @@ Full feature coverage for the v1.0 transpiler (`xtract/transpiler.py`).
 | `T[]` | `VecMapper<T>` | dynamic-length array; 1-indexed |
 | `T[N]` | `ArrayMapper<Self::Api, T, N>` | |
 
+`int256(...)` casts are emitted as `BigInt::from(...)`. Negative literals emit `BigInt::from(-Ni64)` plus a diagnostic warning because MultiversX BigInt negative values can behave differently from Solidity `int256` in storage and arithmetic. Non-literal `int256(...)` casts also warn so the source variable's signedness and runtime range can be verified.
+
 ---
 
 ## Fully Supported Features
@@ -33,7 +35,7 @@ Full feature coverage for the v1.0 transpiler (`xtract/transpiler.py`).
 |---|---|---|
 | `uint256` | `BigUint<Self::Api>` | |
 | `uint64/32/16/8` | `u64/u32/u16/u8` | |
-| `int256` | `BigInt<Self::Api>` | |
+| `int256` | `BigInt<Self::Api>` | Limited negative value semantics compared with Solidity `int256` |
 | `address` | `ManagedAddress<Self::Api>` | |
 | `string` | `ManagedBuffer<Self::Api>` | |
 | `bool` | `bool` | |

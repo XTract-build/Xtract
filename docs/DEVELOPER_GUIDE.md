@@ -202,6 +202,8 @@ const { contractAddress, explorerUrl } = await deployer.deploy({
 | `T[]` | `VecMapper<T>` | 1-indexed dynamic array |
 | `T[N]` | `ArrayMapper<Self::Api, T, N>` |
 
+Signed integer note: primitive signed casts (`int8`, `int16`, `int32`, `int64`) map directly to Rust primitives, but `int256` maps to MultiversX `BigInt<Self::Api>`. MultiversX BigInt has limited negative number support compared with Solidity `int256`, especially around storage and arithmetic behavior. The transpiler warns on negative `int256` literal casts and non-literal `int256(...)` casts so developers can verify the generated behavior against the original Solidity contract.
+
 ## VecMapper — 1-Indexed Array Access
 
 MultiversX `VecMapper` uses **1-based indexing**, unlike Solidity arrays (0-based).
