@@ -53,7 +53,7 @@ v1.0 adds the full deployment pipeline on top of the transpiler. See [docs/v1.0/
 
 ### Core Features
 - **Function body transpilation**: Converts `require()`, `emit()`, `return`, and assignments
-- **Error handling**: Maps Solidity `require()` → MultiversX `require!()` and `revert()` → `sc_panic!()`
+- **Error handling**: Maps Solidity `require()` → MultiversX `require!()` and `revert()` / custom error reverts → `sc_panic!()`
 - **Event emission**: Properly converts Solidity events to MultiversX event calls
 - **Storage operations**: Handles variable assignments and storage access patterns
 
@@ -212,6 +212,8 @@ cat MyStorage.rs
 - `delete var` → `.clear()`, `unchecked { }` passthrough
 - `SafeMath` / `using-for` → inlined arithmetic operators
 - `bytes` / `bytes32` casts from string and hex literals → `ManagedBuffer`
+
+Custom error reverts map to `sc_panic!` string messages. `revert CustomError()` emits `sc_panic!("CustomError")`, `revert CustomError("message")` emits `sc_panic!("message")`, and typed custom error arguments are dropped with a diagnostic warning because MultiversX does not support Solidity-style typed errors.
 
 ### Requires Manual Review
 - Complex arithmetic expressions

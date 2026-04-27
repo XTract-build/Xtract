@@ -249,6 +249,24 @@ The transpiler handles this automatically:
 - Ternary expressions (`cond ? a : b` → `if cond { a } else { b }`)
 - Automatic `#[payable("EGLD")]` annotation
 
+### Custom error reverts
+
+MultiversX `sc_panic!` only accepts a string message, so Solidity custom error reverts are reduced to a panic message:
+
+| Solidity input | Generated MultiversX Rust |
+|---|---|
+| `revert CustomError()` | `sc_panic!("CustomError");` |
+| `revert CustomError("low balance")` | `sc_panic!("low balance");` |
+| `revert CustomError(amount, required)` | `sc_panic!("CustomError");` |
+
+Typed custom error arguments are dropped and emit this warning:
+
+```text
+Custom error arguments dropped — MultiversX sc_panic only supports string messages
+```
+
+Use string message arguments for error context that should survive transpilation. Keep typed Solidity custom error fields as source-level metadata only; the generated MultiversX contract will not encode or expose them.
+
 ### Requires manual review
 - Complex arithmetic expressions
 - External contract calls

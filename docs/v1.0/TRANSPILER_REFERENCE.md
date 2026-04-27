@@ -59,7 +59,7 @@ Numeric casts to bytes require manual review because the correct byte order and 
 | Nested mapping | multi-key mapper | |
 | State variables | `#[storage_mapper]` | dynamic detection, no whitelist |
 | Events | `#[event]` with indexed params | |
-| Custom errors | `require!` with message | |
+| Custom errors | `sc_panic!` message when used with `revert` | typed args dropped with warning |
 | Structs | Rust struct with codec derives | |
 | Modifiers | inlined `require!()` + pre/post statements | pre and post body statements both emitted |
 | `nonReentrant` | `locked.set(true)` / `locked.set(false)` around body | |
@@ -72,7 +72,7 @@ Numeric casts to bytes require manual review because the correct byte order and 
 | Constructor | `#[init]` fn with parameters | parameters mapped via type table |
 | Inheritance (`is A`) | supertrait | |
 | `require()` | `require!()` | |
-| `revert()` | `sc_panic!()` | |
+| `revert()` | `sc_panic!("revert")` | |
 | `if/else` | direct | |
 | `for` loops | `for` loop | counter-based |
 | `while` loops | `while` loop | |
@@ -131,6 +131,28 @@ On EVM, `tx.origin` is the original EOA that initiated the transaction, while `m
 ### `type(uint256).max`
 
 The true uint256 maximum is 2^256-1, which exceeds `u64::MAX`. XTract emits `BigUint::from(u64::MAX)` as a conservative placeholder with a TODO comment. Replace with the correct `BigUint` construction if your contract depends on the exact value.
+
+---
+
+## Revert and Custom Error Mapping
+
+Solidity `revert` statements are mapped to MultiversX `sc_panic!`, which only accepts a string message:
+
+| Solidity input | MultiversX output | Notes |
+|---|---|---|
+| `revert()` | `sc_panic!("revert")` | default fallback message |
+| `revert("failed")` | `sc_panic!("failed")` | string message preserved |
+| `revert CustomError()` | `sc_panic!("CustomError")` | custom error name preserved |
+| `revert CustomError("failed")` | `sc_panic!("failed")` | string message argument used |
+| `revert CustomError(a, b)` | `sc_panic!("CustomError")` | typed custom error arguments are dropped |
+
+When typed custom error arguments are dropped, diagnostics include:
+
+```text
+Custom error arguments dropped — MultiversX sc_panic only supports string messages
+```
+
+Use string message arguments in custom error reverts when the generated MultiversX contract needs contextual panic text.
 
 ---
 
