@@ -36,7 +36,7 @@ xtract deploy ./my_contract/output/my_contract.wasm \
 
 ## Overview
 
-XTract analyzes Solidity code and generates MultiversX Rust code that can be compiled and deployed on the MultiversX blockchain. It supports a comprehensive set of Solidity features including control flow, mappings, modifiers, and inheritance.
+XTract analyzes Solidity code and generates MultiversX Rust code that can be compiled and deployed on the MultiversX blockchain. It supports a comprehensive set of Solidity features including control flow, mappings, modifiers, and inheritance stubs.
 
 ## v1.0.0 — What's New
 
@@ -69,7 +69,7 @@ v1.0 adds the full deployment pipeline on top of the transpiler. See [docs/v1.0/
 
 ### Advanced Features
 - **Function modifiers**: `onlyOwner`, `whenNotPaused`, custom modifiers
-- **Basic inheritance**: Contract inheritance with supertrait generation
+- **Basic inheritance**: Contract inheritance with supertrait stub generation and warnings for required manual integration
 - **Enhanced diagnostics**: Detailed warnings for unsupported features and semantic differences, including `int256` casts that rely on MultiversX `BigInt` negative values
 
 ### Signed Integer Limitation
@@ -206,7 +206,7 @@ cat MyStorage.rs
 - `msg.value` → `self.call_value().egld_value()`
 - `msg.sender` → `self.blockchain().get_caller()`
 - Function modifiers — full pre/post body inlining, including `nonReentrant`
-- Basic inheritance (`contract A is B, C`)
+- Basic inheritance (`contract A is B, C`) as a supertrait stub; manually integrate parent storage mappers and methods
 - `require` / `revert`, if/else, for loops, while loops, do-while loops
 - Ternary expressions (`cond ? a : b` → `if cond { a } else { b }`)
 - `delete var` → `.clear()`, `unchecked { }` passthrough
@@ -219,6 +219,7 @@ Custom error reverts map to `sc_panic!` string messages. `revert CustomError()` 
 - Complex arithmetic expressions
 - External contract calls
 - `bytes` / `bytes32` casts from numeric or unknown input types
+- Inheritance output, because parent storage mappers, methods, modifiers, and init logic are not automatically inherited
 
 ### Cleanly Stripped with TODO Markers
 - **Inline assembly** — replaced with `// TODO: inline assembly removed — no MultiversX equivalent`

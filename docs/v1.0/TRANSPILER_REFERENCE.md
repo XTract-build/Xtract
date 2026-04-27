@@ -70,7 +70,7 @@ Numeric casts to bytes require manual review because the correct byte order and 
 | `msg.data` | `ManagedBuffer::new()` stub | emits `TranspilationWarning`; manual conversion required |
 | `msg.sig` | TODO stub | emits `TranspilationWarning`; no MultiversX equivalent |
 | Constructor | `#[init]` fn with parameters | parameters mapped via type table |
-| Inheritance (`is A`) | supertrait | |
+| Inheritance (`is A`) | supertrait stub | emits `TranspilationWarning`; manual integration required |
 | `require()` | `require!()` | |
 | `revert()` | `sc_panic!("revert")` | |
 | `if/else` | direct | |
@@ -168,6 +168,20 @@ Use string message arguments in custom error reverts when the generated Multiver
 | Diamond inheritance | Complex trait resolution | Flatten inheritance manually |
 | Libraries | Not emitted | Inline library logic |
 | `ecrecover` | No on-chain equivalent | Verify signatures off-chain |
+
+---
+
+## Contract Inheritance Limitation
+
+Solidity inheritance is not automatically reproduced in MultiversX Rust. The current transpiler keeps the parent name as a Rust supertrait stub, for example `contract Child is Parent` becomes `pub trait Child: Parent`, and emits a warning:
+
+```text
+Contract inheritance from Parent requires manual integration — storage mappers and methods are not automatically inherited
+```
+
+This output is a compile-time reminder, not a complete inheritance implementation. Parent storage mappers, endpoint methods, modifiers, events, and initialization logic must be manually imported, copied, or composed into the generated child contract.
+
+Follow-up direction: model Solidity inheritance as explicit trait composition. Each contract should become a trait, parent storage mapper declarations should be copied for simple single-inheritance cases, and parent methods that are called should be explicitly re-declared or imported from a separately transpiled parent contract.
 
 ---
 

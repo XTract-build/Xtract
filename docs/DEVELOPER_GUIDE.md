@@ -244,7 +244,7 @@ The transpiler handles this automatically:
 - Custom errors, structs
 - Public/private/view/payable functions
 - Function modifiers (`onlyOwner`, custom)
-- Basic inheritance (`contract A is B, C`)
+- Basic inheritance (`contract A is B, C`) as a supertrait stub with manual integration required
 - `require` / `revert`, if/else, for loops, while loops, do-while loops
 - Ternary expressions (`cond ? a : b` → `if cond { a } else { b }`)
 - Automatic `#[payable("EGLD")]` annotation
@@ -267,9 +267,23 @@ Custom error arguments dropped — MultiversX sc_panic only supports string mess
 
 Use string message arguments for error context that should survive transpilation. Keep typed Solidity custom error fields as source-level metadata only; the generated MultiversX contract will not encode or expose them.
 
+### Contract inheritance
+
+The transpiler currently treats Solidity inheritance as an honest Rust supertrait stub. For example, `contract Child is Parent` emits `pub trait Child: Parent` plus a `TranspilationWarning` explaining that parent storage mappers and methods are not automatically inherited.
+
+Before compiling or deploying an inherited contract, manually integrate the parent contract surface:
+
+- Copy parent storage mapper declarations into the child trait when the child reads or writes parent state.
+- Copy or compose required parent methods, modifiers, events, and initialization logic.
+- Transpile the parent contract separately if you want to keep it as a separate trait, then import it and ensure the generated child trait has access to the required API.
+- Review constructor and modifier behavior carefully, because Solidity base-constructor execution is not reproduced automatically.
+
+Planned follow-up: replace the stub with explicit trait composition, including parent storage mapper copying for common single-inheritance cases and diagnostics for parent methods that must be declared or imported.
+
 ### Requires manual review
 - Complex arithmetic expressions
 - External contract calls
+- Inheritance supertrait stubs; parent storage mappers and methods must be wired manually
 
 ### Cleanly stripped with TODO markers
 - **Inline assembly** — replaced with `// TODO: inline assembly removed — no MultiversX equivalent`. Requires manual rewrite using Rust/SC APIs.
