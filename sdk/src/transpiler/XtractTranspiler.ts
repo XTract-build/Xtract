@@ -1,4 +1,5 @@
 import { spawn, spawnSync } from 'child_process';
+import { randomBytes } from 'crypto';
 import { writeFile, unlink } from 'fs/promises';
 import { existsSync } from 'fs';
 import { tmpdir } from 'os';
@@ -113,7 +114,8 @@ export class XtractTranspiler {
   }
 
   async transpileCode(soliditySource: string): Promise<TranspileResult> {
-    const tmpFile = join(tmpdir(), `xtract_${Date.now()}_${Math.random().toString(36).slice(2)}.sol`);
+    const suffix = randomBytes(8).toString('hex');
+    const tmpFile = join(tmpdir(), `xtract_${Date.now()}_${suffix}.sol`);
     await writeFile(tmpFile, soliditySource, 'utf8');
     try {
       return await this.transpileFile(tmpFile);
