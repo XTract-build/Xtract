@@ -4,6 +4,9 @@ use multiversx_sc::imports::*;
 
 // Inherits from: Ownable
 
+// NOTE: Inheritance from Ownable requires manually importing parent storage mappers and methods
+// See MultiversX documentation on contract composition
+
 #[multiversx_sc::contract]
 pub trait SimpleInheritance: Ownable {
     #[storage_mapper("value")]

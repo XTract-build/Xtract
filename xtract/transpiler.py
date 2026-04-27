@@ -2061,6 +2061,15 @@ class Transpiler:
         # Add inheritance comment if there are parent contracts
         if parents:
             lines.append(f"// Inherits from: {', '.join(parents)}\n")
+            for parent in parents:
+                lines.append(
+                    f"// NOTE: Inheritance from {parent} requires manually importing parent storage mappers and methods"
+                )
+            lines.append("// See MultiversX documentation on contract composition\n")
+            for parent in parents:
+                self._warnings.append(TranspilationWarning(
+                    f"Contract inheritance from {parent} requires manual integration — storage mappers and methods are not automatically inherited"
+                ))
         # Add hex import if needed (for large number conversion)
         if any("hex::decode" in line for line in self._parse_statements("\n".join([f.get("body", "") for f in functions])) if isinstance(line, dict) and line.get("type") == "assignment"):
             # Check if any function body uses hex::decode

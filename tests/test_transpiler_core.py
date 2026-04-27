@@ -127,6 +127,19 @@ def test_inheritance_features():
     # Should include inheritance comment or supertrait
     assert "pub trait SimpleInheritance" in actual
     assert "Ownable" in actual  # Parent contract reference
+    assert "requires manually importing parent storage mappers and methods" in actual
+
+
+def test_inheritance_emits_manual_integration_warning():
+    """Contract inheritance should warn that the supertrait is only a stub"""
+    sol = load("test_cases/solidity/SimpleInheritance.sol")
+    result = Transpiler().convert_with_diagnostics(sol)
+
+    warning_messages = [w.message for w in result.warnings]
+    assert any(
+        "Contract inheritance from Ownable requires manual integration" in message
+        for message in warning_messages
+    ), "Expected a TranspilationWarning about manual inheritance integration"
 
 
 def test_multiple_modifiers():
