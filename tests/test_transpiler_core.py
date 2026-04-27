@@ -242,6 +242,86 @@ def test_convert_with_diagnostics():
     assert "pub trait SimpleStorage" in result.code
 
 
+def test_custom_error_revert_without_args_uses_error_name():
+    """revert CustomError() maps to sc_panic with the error name"""
+    sol = """
+    pragma solidity ^0.8.0;
+
+    contract Foo {
+        error CustomError();
+
+        function fail() public {
+            revert CustomError();
+        }
+    }
+    """
+
+    result = Transpiler().convert(sol)
+
+    assert 'sc_panic!("CustomError");' in result
+
+
+def test_custom_error_revert_string_arg_uses_message():
+    """revert CustomError("message") maps to the string message"""
+    sol = """
+    pragma solidity ^0.8.0;
+
+    contract Foo {
+        error InsufficientFunds(string message);
+
+        function fail() public {
+            revert InsufficientFunds("low balance");
+        }
+    }
+    """
+
+    result = Transpiler().convert(sol)
+
+    assert 'sc_panic!("low balance");' in result
+
+
+def test_revert_without_args_uses_default_message():
+    """revert() maps to a default sc_panic message"""
+    sol = """
+    pragma solidity ^0.8.0;
+
+    contract Foo {
+        function fail() public {
+            revert();
+        }
+    }
+    """
+
+    result = Transpiler().convert(sol)
+
+    assert 'sc_panic!("revert");' in result
+
+
+def test_custom_error_revert_typed_args_emit_warning_and_drop_args():
+    """Typed custom error args are dropped because sc_panic only accepts text"""
+    sol = """
+    pragma solidity ^0.8.0;
+
+    contract Foo {
+        error InsufficientFunds(uint256 available, uint256 required);
+
+        function fail(uint256 available, uint256 required) public {
+            revert InsufficientFunds(available, required);
+        }
+    }
+    """
+
+    result = Transpiler().convert_with_diagnostics(sol)
+
+    assert result.success
+    assert 'sc_panic!("InsufficientFunds");' in result.code
+    assert "available, required" not in result.code
+    assert any(
+        warning.message == "Custom error arguments dropped — MultiversX sc_panic only supports string messages"
+        for warning in result.warnings
+    )
+
+
 def test_local_declaration_generates_let():
     """Test that local variable declarations emit let mut bindings"""
     sol = load("test_cases/solidity/VariableDeclarations.sol")

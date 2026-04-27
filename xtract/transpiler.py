@@ -722,15 +722,23 @@ class Transpiler:
                     "message": message
                 })
                 continue
+            if re.match(r'revert\s*\(\s*\)', line):
+                statements.append({
+                    "type": "revert",
+                    "message": "revert"
+                })
+                continue
 
             # Handle custom error revert
             if revert_error_match := re.match(r'revert\s+(\w+)\s*\(([^)]*)\)', line):
                 error_name = revert_error_match.group(1)
                 args = revert_error_match.group(2).strip()
+                message_match = re.fullmatch(r'''["']([^"']+)["']''', args)
                 statements.append({
                     "type": "revert_error",
                     "error_name": error_name,
-                    "args": args
+                    "args": args,
+                    "message": message_match.group(1) if message_match else None
                 })
                 continue
 
@@ -1089,11 +1097,14 @@ class Transpiler:
         elif stmt_type == "revert_error":
             error_name = stmt["error_name"]
             args = stmt["args"]
+            message = stmt.get("message")
+            if message:
+                return f'        sc_panic!("{message}");'
             if args:
-                converted_args = self._convert_expression(args)
-                return f'        sc_panic!("{error_name}({converted_args})");'
-            else:
-                return f'        sc_panic!("{error_name}");'
+                self._warnings.append(TranspilationWarning(
+                    "Custom error arguments dropped — MultiversX sc_panic only supports string messages"
+                ))
+            return f'        sc_panic!("{error_name}");'
 
         elif stmt_type == "if":
             condition = self._convert_expression(stmt["condition"])
