@@ -73,6 +73,8 @@ class Transpiler:
     def __init__(self):
         # Populated by convert() from _extract_storage() before any expression conversion
         self._storage_var_names: set[str] = set()
+        self._storage_var_types: dict[str, str] = {}
+        self._current_var_types: dict[str, str] = {}
         self._mapping_var_names: dict[str, int] = {}  # name → number of keys
         self._array_var_names: set[str] = set()  # VecMapper array variables
         self._using_for: dict[str, str] = {}   # type_name -> library_name
@@ -331,6 +333,20 @@ class Transpiler:
             p_type, p_name = parts[0], parts[1].rstrip(",")
             results.append(f"{p_name}: {self._map_type(p_type)}")
         return results
+
+    def _parse_param_types(self, param_str: str) -> dict[str, str]:
+        types: dict[str, str] = {}
+        if not param_str:
+            return types
+        for raw in param_str.split(","):
+            p = raw.strip()
+            if not p:
+                continue
+            parts = p.split()
+            if len(parts) < 2:
+                continue
+            types[parts[1].rstrip(",")] = parts[0]
+        return types
 
     def _format_return(self, return_type: str | None) -> str:
         if not return_type:
@@ -988,8 +1004,10 @@ class Transpiler:
             rust_type = self._map_type(type_name)
             if value is not None:
                 rust_value = self._convert_expression(value)
+                self._current_var_types[var_name] = type_name
                 return f'        let mut {var_name}: {rust_type} = {rust_value};'
             else:
+                self._current_var_types[var_name] = type_name
                 return f'        let mut {var_name}: {rust_type} = Default::default();'
 
         elif stmt_type == "push":
@@ -1327,7 +1345,7 @@ class Transpiler:
         type cast, or None otherwise.
         """
         m = re.match(
-            r'^(uint(?:256|128|64|32|16|8)|int(?:256|128|64|32|16|8)|address|bytes(?:32|20)|bool)\s*\(',
+            r'^(uint(?:256|128|64|32|16|8)|int(?:256|128|64|32|16|8)|address|bytes(?:32|20)?|bool)\s*\(',
             expr,
         )
         if not m:
@@ -1344,6 +1362,43 @@ class Transpiler:
         if depth != 0 or i != len(expr):
             return None
         return m.group(1), expr[m.end():i - 1]
+
+    def _lookup_var_type(self, name: str) -> str | None:
+        return self._current_var_types.get(name) or self._storage_var_types.get(name)
+
+    def _convert_bytes_cast(self, type_name: str, inner_raw: str, converted_inner: str) -> str:
+        """Convert bytes/bytesN casts to ManagedBuffer when the input shape is knowable."""
+        if (len(inner_raw) >= 2
+                and inner_raw[0] == inner_raw[-1]
+                and inner_raw[0] in {'"', "'"}):
+            return f'ManagedBuffer::from(b"{inner_raw[1:-1]}")'
+
+        if re.match(r'^0x[0-9a-fA-F]+$', inner_raw):
+            hex_value = inner_raw[2:]
+            if len(hex_value) % 2:
+                hex_value = f'0{hex_value}'
+            bytes_literal = ', '.join(
+                f'0x{hex_value[i:i + 2].lower()}'
+                for i in range(0, len(hex_value), 2)
+            )
+            return f'ManagedBuffer::from(&[{bytes_literal}])'
+
+        inner_type = self._lookup_var_type(inner_raw) if re.match(r'^[A-Za-z_]\w*$', inner_raw) else None
+        if inner_type in {'bytes', 'string', 'ManagedBuffer'}:
+            return converted_inner
+
+        is_numeric_literal = bool(re.match(r'^\d+$', inner_raw))
+        is_uint_typed = bool(inner_type and inner_type.startswith('uint'))
+        if is_numeric_literal or is_uint_typed:
+            self._warnings.append(TranspilationWarning(
+                f"{type_name}(uint) cast requires manual conversion — use .to_bytes_be() or similar"
+            ))
+            return f'ManagedBuffer::new() /* TODO: {type_name}({inner_raw}) — convert integer bytes manually */'
+
+        self._warnings.append(TranspilationWarning(
+            f"{type_name}({inner_raw}) cast input type unknown — verify input type manually"
+        ))
+        return f'ManagedBuffer::new() /* TODO: {type_name}({inner_raw}) — verify input type */'
 
     def _parse_ternary(self, expr: str):
         """Find ternary operator at depth 0. Returns (condition, then_expr, else_expr) or None."""
@@ -1565,8 +1620,10 @@ class Transpiler:
                 return f'ManagedAddress::from(&{converted_inner})'
             if type_name == 'bool':
                 return f'({converted_inner}) as bool'
+            if type_name in {'bytes', 'bytes32'}:
+                return self._convert_bytes_cast(type_name, inner_raw, converted_inner)
             if type_name.startswith('bytes'):
-                return converted_inner  # transparent cast (bytes20, bytes32)
+                return converted_inner  # transparent cast (bytes20)
 
         # Handle address(0) as a sub-expression (e.g. x != address(0))
         expr = re.sub(r'\baddress\(0\)', 'ManagedAddress::zero()', expr)
@@ -1732,6 +1789,8 @@ class Transpiler:
 
         params = self._format_params(func["params"])
         return_type = self._format_return(func.get("return_type"))
+        previous_var_types = self._current_var_types
+        self._current_var_types = self._parse_param_types(func["params"])
 
         # Parse and convert body statements
         body_lines = []
@@ -1771,9 +1830,12 @@ class Transpiler:
 
         if body_lines:
             body = '\n'.join(body_lines)
-            return f"{annotation}fn {snake_name}(&self{', ' if params else ''}{', '.join(params)}){return_type} {{\n{body}\n    }}"
+            converted_function = f"{annotation}fn {snake_name}(&self{', ' if params else ''}{', '.join(params)}){return_type} {{\n{body}\n    }}"
         else:
-            return f"{annotation}fn {snake_name}(&self{', ' if params else ''}{', '.join(params)}){return_type} {{\n        // TODO: implement body\n    }}"
+            converted_function = f"{annotation}fn {snake_name}(&self{', ' if params else ''}{', '.join(params)}){return_type} {{\n        // TODO: implement body\n    }}"
+
+        self._current_var_types = previous_var_types
+        return converted_function
 
     def _extract_storage(self, content: str) -> list[tuple[str, str, str]]:
         """Extract storage variables, including mappings (single and nested)"""
@@ -1791,7 +1853,7 @@ class Transpiler:
             vars.append(("array", match.group(2), match.group(1)))
 
         # Simple variables (uint256, address, etc.)
-        for match in re.finditer(r"(uint256|uint128|uint64|uint32|uint16|uint8|int256|int128|int64|int32|int16|int8|string|address|bool|u8)(?:\s+(?:public|private|internal|external))?\s+(\w+)\s*;", content_no_bodies):
+        for match in re.finditer(r"(uint256|uint128|uint64|uint32|uint16|uint8|int256|int128|int64|int32|int16|int8|string|bytes|bytes32|bytes20|address|bool|u8)(?:\s+(?:public|private|internal|external))?\s+(\w+)\s*;", content_no_bodies):
             # Skip names already captured as arrays
             if not any(v[1] == match.group(2) for v in vars):
                 vars.append((match.group(1), match.group(2), ""))
@@ -1967,6 +2029,10 @@ class Transpiler:
             var_name for var_type, var_name, _ in storage
             if var_type not in ("mapping", "nested_mapping", "array")
         }
+        self._storage_var_types = {
+            var_name: var_type for var_type, var_name, _ in storage
+            if var_type not in ("mapping", "nested_mapping")
+        }
         self._mapping_var_names = {
             var_name: (2 if var_type == "nested_mapping" else 1)
             for var_type, var_name, _ in storage
@@ -2095,4 +2161,3 @@ def transpile_with_diagnostics(input_path: Path, output_path: Path) -> Transpila
         output_path.write_text(result.code)
 
     return result
-

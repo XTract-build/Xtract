@@ -750,6 +750,50 @@ def test_nested_type_cast_address_bytes20():
     assert result == "ManagedAddress::from(&x)", f"Got: {result!r}"
 
 
+def test_bytes32_cast_string_literal_to_managed_buffer():
+    """bytes32(\"hello\") should become a ManagedBuffer byte string."""
+    t = Transpiler()
+    result = t._convert_expression('bytes32("hello")')
+    assert result == 'ManagedBuffer::from(b"hello")'
+    assert t._warnings == []
+
+
+def test_bytes32_cast_hex_literal_to_managed_buffer():
+    """bytes32(0xdeadbeef) should become an explicit byte slice."""
+    t = Transpiler()
+    result = t._convert_expression("bytes32(0xdeadbeef)")
+    assert result == "ManagedBuffer::from(&[0xde, 0xad, 0xbe, 0xef])"
+    assert t._warnings == []
+
+
+def test_bytes32_cast_unknown_variable_warns_and_emits_stub():
+    """Unknown bytes32(x) input types must emit a verification TODO and warning."""
+    t = Transpiler()
+    result = t._convert_expression("bytes32(maybeBytes)")
+    assert result == "ManagedBuffer::new() /* TODO: bytes32(maybeBytes) — verify input type */"
+    warning_messages = [w.message for w in t._warnings]
+    assert any("bytes32(maybeBytes) cast input type unknown" in msg for msg in warning_messages)
+
+
+def test_bytes32_cast_uint_variable_warns_and_emits_integer_stub():
+    """Known uint inputs require manual endian conversion."""
+    t = Transpiler()
+    t._current_var_types = {"someUint": "uint256"}
+    result = t._convert_expression("bytes32(someUint)")
+    assert result == "ManagedBuffer::new() /* TODO: bytes32(someUint) — convert integer bytes manually */"
+    warning_messages = [w.message for w in t._warnings]
+    assert any("bytes32(uint) cast requires manual conversion" in msg for msg in warning_messages)
+
+
+def test_bytes_cast_known_bytes_variable_is_noop():
+    """bytes(someBytes) should remain transparent when the input is already bytes."""
+    t = Transpiler()
+    t._current_var_types = {"someBytes": "bytes"}
+    result = t._convert_expression("bytes(someBytes)")
+    assert result == "someBytes"
+    assert t._warnings == []
+
+
 def test_constructor_params_emitted_in_init():
     """Constructor parameters must appear in #[init] fn signature with correct types."""
     sol = """

@@ -202,6 +202,20 @@ const { contractAddress, explorerUrl } = await deployer.deploy({
 | `T[]` | `VecMapper<T>` | 1-indexed dynamic array |
 | `T[N]` | `ArrayMapper<Self::Api, T, N>` |
 
+### `bytes` / `bytes32` Cast Inputs
+
+The expression converter handles `bytes(x)` and `bytes32(x)` according to the input form:
+
+| Input | Generated output |
+|---|---|
+| string literal | `ManagedBuffer::from(b"...")` |
+| hex literal | `ManagedBuffer::from(&[0x.., ...])` |
+| known `bytes`, `string`, or `ManagedBuffer` variable | no-op |
+| known `uint*` value or numeric literal | TODO stub plus `TranspilationWarning` |
+| unknown expression or variable type | TODO stub plus `TranspilationWarning` |
+
+When adding parser paths that introduce new local symbols, keep `_current_var_types` up to date before expressions that may cast those symbols to `bytes` or `bytes32`. Numeric casts must stay conservative unless the byte width and endian semantics are explicit; prefer warning with guidance to use `.to_bytes_be()` or a contract-specific conversion.
+
 Signed integer note: primitive signed casts (`int8`, `int16`, `int32`, `int64`) map directly to Rust primitives, but `int256` maps to MultiversX `BigInt<Self::Api>`. MultiversX BigInt has limited negative number support compared with Solidity `int256`, especially around storage and arithmetic behavior. The transpiler warns on negative `int256` literal casts and non-literal `int256(...)` casts so developers can verify the generated behavior against the original Solidity contract.
 
 ## VecMapper — 1-Indexed Array Access

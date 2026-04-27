@@ -29,6 +29,22 @@ Full feature coverage for the v1.0 transpiler (`xtract/transpiler.py`).
 
 ---
 
+## Type Cast Mapping
+
+`bytes(x)` and `bytes32(x)` casts are emitted as `ManagedBuffer` conversions when the input shape is known:
+
+| Solidity Cast | MultiversX Rust Output | Notes |
+|---|---|---|
+| `bytes32("hello")` / `bytes("hello")` | `ManagedBuffer::from(b"hello")` | string literal input |
+| `bytes32(0xdeadbeef)` / `bytes(0xdeadbeef)` | `ManagedBuffer::from(&[0xde, 0xad, 0xbe, 0xef])` | hex literal input |
+| `bytes32(someBytes)` / `bytes(someBytes)` | `someBytes` | no-op when `someBytes` is known to be `bytes`, `string`, or `ManagedBuffer` |
+| `bytes32(someUint)` / `bytes(someUint)` | `ManagedBuffer::new() /* TODO: ... */` | emits `bytes32(uint) cast requires manual conversion — use .to_bytes_be() or similar` |
+| `bytes32(x)` / `bytes(x)` with unknown input type | `ManagedBuffer::new() /* TODO: bytes32(x) — verify input type */` | emits a `TranspilationWarning` |
+
+Numeric casts to bytes require manual review because the correct byte order and width depend on the Solidity intent. Use `.to_bytes_be()` or an equivalent explicit conversion before wiring the generated stub into production code.
+
+---
+
 ## Fully Supported Features
 
 | Solidity Feature | MultiversX Rust Output | Notes |

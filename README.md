@@ -211,10 +211,12 @@ cat MyStorage.rs
 - Ternary expressions (`cond ? a : b` → `if cond { a } else { b }`)
 - `delete var` → `.clear()`, `unchecked { }` passthrough
 - `SafeMath` / `using-for` → inlined arithmetic operators
+- `bytes` / `bytes32` casts from string and hex literals → `ManagedBuffer`
 
 ### Requires Manual Review
 - Complex arithmetic expressions
 - External contract calls
+- `bytes` / `bytes32` casts from numeric or unknown input types
 
 ### Cleanly Stripped with TODO Markers
 - **Inline assembly** — replaced with `// TODO: inline assembly removed — no MultiversX equivalent`
