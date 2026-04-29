@@ -780,6 +780,59 @@ def test_ternary_operator_transpilation():
     assert "let mut fee: BigUint<Self::Api> = if amount > BigUint::from(1000u32) { amount / BigUint::from(100u32) } else { BigUint::zero() };" in result
 
 
+def test_internal_function_has_no_endpoint_annotation():
+    """Internal Solidity functions should transpile as helper methods, not endpoints."""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+
+    contract HelperOnly {
+        function double(uint256 amount) internal returns (uint256) {
+            return amount * 2;
+        }
+    }
+    """
+    result = Transpiler().convert(sol)
+    assert "#[endpoint]" not in result
+    assert "fn double(&self, amount: BigUint<Self::Api>) -> BigUint<Self::Api>" in result
+
+
+def test_pure_function_maps_to_view_annotation():
+    """Pure Solidity functions are read-only and should map to MultiversX views."""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+
+    contract Math {
+        function double(uint256 amount) public pure returns (uint256) {
+            return amount * 2;
+        }
+    }
+    """
+    result = Transpiler().convert(sol)
+    assert "#[view(double)]" in result
+    assert "#[endpoint]" not in result
+
+
+def test_public_function_maps_to_endpoint_annotation():
+    """Public non-view Solidity functions should remain MultiversX endpoints."""
+    sol = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+
+    contract Counter {
+        uint256 public count;
+
+        function increment() public {
+            count = count + 1;
+        }
+    }
+    """
+    result = Transpiler().convert(sol)
+    assert "#[endpoint]" in result
+    assert "fn increment(&self)" in result
+
+
 # Count test to verify we have 50 test cases
 def test_fifty_test_cases():
     """Verify we have at least 50 test cases"""

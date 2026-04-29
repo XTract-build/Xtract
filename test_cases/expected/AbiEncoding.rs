@@ -7,7 +7,7 @@ pub trait AbiEncoding {
     #[init]
     fn init(&self) {}
 
-    #[endpoint]
+    #[view(encodeTwo)]
     fn encode_two(&self, a: BigUint<Self::Api>, b: BigUint<Self::Api>) -> bytes {
         return {
             let mut __buf = ManagedBuffer::new();
@@ -17,7 +17,7 @@ pub trait AbiEncoding {
         };
     }
 
-    #[endpoint]
+    #[view(encodePackedTwo)]
     fn encode_packed_two(&self, a: BigUint<Self::Api>, b: BigUint<Self::Api>) -> bytes {
         return {
             let mut __buf = ManagedBuffer::new();
@@ -27,7 +27,7 @@ pub trait AbiEncoding {
         };
     }
 
-    #[endpoint]
+    #[view(decodeHint)]
     fn decode_hint(&self, data: BigUint<Self::Api>) -> BigUint<Self::Api> {
         return todo!(/* abi.decode: use codec::top_decode_from_managed_buffer */);
     }

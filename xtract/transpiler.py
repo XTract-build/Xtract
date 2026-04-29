@@ -319,9 +319,12 @@ class Transpiler:
         functions = []
 
         def build_function(name: str, params: str, modifiers_str: str, body: str, start: int) -> dict:
-            is_view = " view" in f" {modifiers_str} " or " view " in f" {modifiers_str} "
+            padded_modifiers = f" {modifiers_str} "
+            is_view = " view " in padded_modifiers or " pure " in padded_modifiers
             is_payable = " payable" in f" {modifiers_str} " or " payable " in f" {modifiers_str} "
             is_fallback = name in ("fallback", "receive")
+            visibility_match = re.search(r"\b(public|external|internal|private)\b", modifiers_str)
+            visibility = visibility_match.group(1) if visibility_match else "public"
             if name == "receive":
                 is_payable = True
 
@@ -354,6 +357,7 @@ class Transpiler:
                 "is_view": is_view,
                 "is_payable": is_payable,
                 "is_fallback": is_fallback,
+                "visibility": visibility,
                 "return_type": return_type,
                 "body": body,
                 "applied_modifiers": applied_modifiers,
@@ -366,6 +370,9 @@ class Transpiler:
                 "name": "",  # Empty name for constructor (becomes init)
                 "params": constructor["params"],
                 "is_view": False,
+                "is_payable": False,
+                "is_fallback": False,
+                "visibility": "public",
                 "return_type": None,
                 "body": constructor["body"],
                 "applied_modifiers": [],
@@ -1899,6 +1906,8 @@ class Transpiler:
 
     def convert_function(self, func: dict, contract_name: str = "Contract", modifiers: dict = None) -> str:
         snake_name = "call" if func.get("is_fallback") else camel_to_snake(func["name"]) if func["name"] else "init"
+        visibility = func.get("visibility", "public")
+        is_public_endpoint = visibility in ("public", "external")
 
         # Build annotation based on function type
         if func.get("is_fallback"):
@@ -1906,14 +1915,16 @@ class Transpiler:
                 annotation = "#[payable(\"EGLD\")]\n    #[fallback]\n    "
             else:
                 annotation = "#[fallback]\n    "
-        elif func["is_view"]:
+        elif func["is_view"] and is_public_endpoint:
             annotation = f"#[view({func['name']})]\n    "
-        elif func["name"]:
+        elif func["name"] and is_public_endpoint:
             # Check if payable
             if func.get("is_payable"):
                 annotation = "#[payable(\"EGLD\")]\n    #[endpoint]\n    "
             else:
                 annotation = "#[endpoint]\n    "
+        elif func["name"]:
+            annotation = ""
         else:
             annotation = "#[init]\n    "
 

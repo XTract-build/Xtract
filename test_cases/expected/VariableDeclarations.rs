@@ -7,7 +7,7 @@ pub trait VariableDeclarations {
     #[init]
     fn init(&self) {}
 
-    #[endpoint]
+    #[view(compute)]
     fn compute(&self, x: u64, y: u64) -> u64 {
         let mut sum: u64 = x + y;
         let mut ok: bool = true;
