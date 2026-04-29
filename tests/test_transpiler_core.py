@@ -119,6 +119,29 @@ def test_modifier_features():
     assert "require!" in actual
 
 
+def test_parameterized_modifier_substitutes_call_site_args():
+    """Parameterized modifiers should inline with call-site arguments substituted."""
+    sol = """
+    contract RoleGate {
+        bytes32 adminRole;
+        mapping(bytes32 => mapping(address => bool)) hasRole;
+
+        modifier onlyRole(bytes32 role) {
+            require(hasRole[role][msg.sender], "No role");
+            _;
+        }
+
+        function foo() public onlyRole(adminRole) {
+        }
+    }
+    """
+    actual = Transpiler().convert(sol)
+
+    assert "require!" in actual
+    assert "self.has_role(&self.admin_role().get())" in actual
+    assert '"No role"' in actual
+
+
 def test_inheritance_features():
     """Test inheritance transpilation"""
     sol = load("test_cases/solidity/SimpleInheritance.sol")

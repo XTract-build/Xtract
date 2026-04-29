@@ -211,6 +211,7 @@ class Transpiler:
         for match in re.finditer(r"modifier\s+(\w+)\s*\(([^)]*)\)\s*\{([^}]*(?:\{[^}]*\}[^}]*)*)\}", content, re.DOTALL):
             name = match.group(1)
             params = match.group(2).strip()
+            param_names = self._parse_param_names(params)
             body = match.group(3).strip()
 
             # Split on _; to get pre and post statements
@@ -234,6 +235,7 @@ class Transpiler:
             modifiers[name] = {
                 "name": name,
                 "params": params,
+                "param_names": param_names,
                 "body": body,
                 "condition": condition,
                 "message": message,
@@ -241,6 +243,65 @@ class Transpiler:
                 "post_statements": post_statements,
             }
         return modifiers
+
+    def _parse_param_names(self, param_str: str) -> list[str]:
+        """Extract parameter names from a Solidity parameter list."""
+        names: list[str] = []
+        if not param_str:
+            return names
+        for raw in self._split_args(param_str):
+            parts = raw.split()
+            if len(parts) < 2:
+                continue
+            name = parts[-1].rstrip(",")
+            if name not in {"memory", "storage", "calldata", "payable"}:
+                names.append(name)
+        return names
+
+    def _parse_modifier_invocations(self, modifier_text: str) -> list[dict]:
+        """Parse applied modifiers from a function signature suffix."""
+        applied_modifiers = []
+        pos = 0
+        while pos < len(modifier_text):
+            name_match = re.search(r'\b(\w+)\b', modifier_text[pos:])
+            if not name_match:
+                break
+            name = name_match.group(1)
+            start = pos + name_match.start()
+            end = pos + name_match.end()
+            pos = end
+
+            idx = end
+            while idx < len(modifier_text) and modifier_text[idx].isspace():
+                idx += 1
+
+            args: list[str] = []
+            if idx < len(modifier_text) and modifier_text[idx] == '(':
+                close_idx = self._find_matching_paren(modifier_text, idx)
+                if close_idx != -1:
+                    args_str = modifier_text[idx + 1:close_idx].strip()
+                    args = self._split_args(args_str) if args_str else []
+                    pos = close_idx + 1
+
+            if name and name != "returns":
+                applied_modifiers.append({
+                    "name": name,
+                    "args": args,
+                    "raw": modifier_text[start:pos].strip(),
+                })
+
+        return applied_modifiers
+
+    def _find_matching_paren(self, text: str, open_idx: int) -> int:
+        depth = 0
+        for i in range(open_idx, len(text)):
+            if text[i] == '(':
+                depth += 1
+            elif text[i] == ')':
+                depth -= 1
+                if depth == 0:
+                    return i
+        return -1
 
     def parse_constructors(self, content: str):
         constructors = []
@@ -274,10 +335,7 @@ class Transpiler:
             # Remove returns clause
             modifier_text = re.sub(r'returns\s*\([^)]*\)', '', modifier_text)
             # What remains are custom modifiers (possibly with args)
-            for mod_match in re.finditer(r'(\w+)(?:\s*\([^)]*\))?', modifier_text):
-                mod_name = mod_match.group(1).strip()
-                if mod_name and mod_name not in ['', 'returns']:
-                    applied_modifiers.append(mod_name)
+            applied_modifiers = self._parse_modifier_invocations(modifier_text)
 
             returns_match = re.search(r"returns\s*\(([^)]*)\)", modifiers_str)
             return_type = returns_match.group(1).strip() if returns_match else None
@@ -1318,6 +1376,27 @@ class Transpiler:
             args.append(s)
         return args
 
+    def _substitute_modifier_args(self, stmt: dict, arg_map: dict[str, str]) -> dict:
+        """Substitute modifier parameter names with call-site arguments in parsed statements."""
+        if not arg_map:
+            return stmt
+
+        def replace(value):
+            if isinstance(value, str):
+                for param_name, arg in arg_map.items():
+                    value = re.sub(rf'\b{re.escape(param_name)}\b', arg, value)
+                return value
+            if isinstance(value, dict):
+                return {
+                    key: inner if key == "message" else replace(inner)
+                    for key, inner in value.items()
+                }
+            if isinstance(value, list):
+                return [replace(inner) for inner in value]
+            return value
+
+        return replace(stmt)
+
     def _apply_using_for_transforms(self, expr: str) -> str:
         """Inline known library calls (SafeMath, Math, etc.) to plain Rust expressions.
 
@@ -1851,21 +1930,33 @@ class Transpiler:
 
         # Add modifier checks at the start of the function
         if modifiers and func.get("applied_modifiers"):
-            for mod_name in func["applied_modifiers"]:
+            for applied_modifier in func["applied_modifiers"]:
+                if isinstance(applied_modifier, dict):
+                    mod_name = applied_modifier["name"]
+                    mod_args = applied_modifier.get("args", [])
+                else:
+                    mod_name = applied_modifier
+                    mod_args = []
                 if mod_name in modifiers:
                     mod = modifiers[mod_name]
+                    arg_map = dict(zip(mod.get("param_names", []), mod_args))
                     if mod.get("pre_statements"):
                         for stmt in mod["pre_statements"]:
+                            stmt = self._substitute_modifier_args(stmt, arg_map)
                             converted = self._convert_statement(stmt, "")
                             if converted:
                                 body_lines.append(converted)
                     elif mod.get("condition"):
                         # Fallback for modifiers parsed without pre_statements
-                        converted_condition = self._convert_expression(mod["condition"])
+                        condition = mod["condition"]
+                        for param_name, arg in arg_map.items():
+                            condition = re.sub(rf'\b{re.escape(param_name)}\b', arg, condition)
+                        converted_condition = self._convert_expression(condition)
                         message = mod.get("message", f"{mod_name} check failed")
                         body_lines.append(f'        require!({converted_condition}, "{message}");')
                     if mod.get("post_statements"):
                         for stmt in mod["post_statements"]:
+                            stmt = self._substitute_modifier_args(stmt, arg_map)
                             converted = self._convert_statement(stmt, "")
                             if converted:
                                 post_modifier_lines.append(converted)
