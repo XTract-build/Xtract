@@ -983,13 +983,14 @@ class Transpiler:
             return "        // TODO: inline assembly removed \u2014 no MultiversX equivalent"
 
         elif stmt_type == "require":
-            condition = self._convert_expression(stmt["condition"])
+            pre_lines, condition = self._convert_expression_with_struct_field_reads(stmt["condition"])
             message = stmt.get("message")
             # MultiversX require! macro always needs a message
             if message:
-                return f'        require!({condition}, "{message}");'
+                require_line = f'        require!({condition}, "{message}");'
             else:
-                return f'        require!({condition}, "Requirement not met");'
+                require_line = f'        require!({condition}, "Requirement not met");'
+            return "\n".join(pre_lines + [require_line])
 
         elif stmt_type == "emit":
             event_name = stmt["event_name"]
@@ -1045,16 +1046,16 @@ class Transpiler:
             elif expression.lower() == "false":
                 return '        return false;'
             else:
-                converted_expr = self._convert_expression(expression)
+                pre_lines, converted_expr = self._convert_expression_with_struct_field_reads(expression)
                 # Preserve explicit return from Solidity for clarity
-                return f'        return {converted_expr};'
+                return "\n".join(pre_lines + [f'        return {converted_expr};'])
 
         elif stmt_type == "assignment":
             left = stmt["left"].strip()
             right_expr = stmt["right"].strip()
             
             # Convert right expression - handle storage variable access
-            right = self._convert_expression(right_expr)
+            right_pre_lines, right = self._convert_expression_with_struct_field_reads(right_expr)
             
             # Check if right expression uses a parameter that might be moved
             # If it contains operations with parameters, we need to clone
@@ -1083,13 +1084,13 @@ class Transpiler:
                 key2 = self._convert_expression(nested_map_match.group(3).strip())
                 if map_name in self._mapping_var_names:
                     snake_name = camel_to_snake(map_name)
-                    return f'        self.{snake_name}(&{key1}, &{key2}).set({right});'
+                    return "\n".join(right_pre_lines + [f'        self.{snake_name}(&{key1}, &{key2}).set({right});'])
             elif single_map_match:
                 map_name = single_map_match.group(1)
                 key = self._convert_expression(single_map_match.group(2).strip())
                 if map_name in self._mapping_var_names:
                     snake_name = camel_to_snake(map_name)
-                    return f'        self.{snake_name}(&{key}).set({right});'
+                    return "\n".join(right_pre_lines + [f'        self.{snake_name}(&{key}).set({right});'])
 
             # Check if this is a storage variable assignment
             # Extract variable name (handle cases like "balance = balance - _value")
@@ -1099,11 +1100,11 @@ class Transpiler:
                 snake_left = camel_to_snake(left_var)
                 # Wrap right side in parentheses if it contains operations
                 if any(op in right for op in ['+', '-', '*', '/', '(', ')']):
-                    return f'        self.{snake_left}().set(&({right}));'
+                    return "\n".join(right_pre_lines + [f'        self.{snake_left}().set(&({right}));'])
                 else:
-                    return f'        self.{snake_left}().set(&{right});'
+                    return "\n".join(right_pre_lines + [f'        self.{snake_left}().set(&{right});'])
             else:
-                return f'        {left} = {right};'
+                return "\n".join(right_pre_lines + [f'        {left} = {right};'])
 
         elif stmt_type == "declaration":
             type_name = stmt["type_name"]
@@ -1111,9 +1112,9 @@ class Transpiler:
             value = stmt.get("value")
             rust_type = self._map_type(type_name)
             if value is not None:
-                rust_value = self._convert_expression(value)
+                pre_lines, rust_value = self._convert_expression_with_struct_field_reads(value)
                 self._current_var_types[var_name] = type_name
-                return f'        let mut {var_name}: {rust_type} = {rust_value};'
+                return "\n".join(pre_lines + [f'        let mut {var_name}: {rust_type} = {rust_value};'])
             else:
                 self._current_var_types[var_name] = type_name
                 return f'        let mut {var_name}: {rust_type} = Default::default();'
@@ -1144,23 +1145,25 @@ class Transpiler:
             if key is not None:
                 # mapping[key].field op= value → load-mutate-store
                 converted_key = self._convert_expression(key)
-                load = f'        let mut s = self.{snake_var}(&{converted_key}).get();'
+                local_name = self._struct_value_local_name(struct_var)
+                load = f'        let mut {local_name} = self.{snake_var}(&{converted_key}).get();'
                 if op == '=':
-                    mutate = f'        s.{snake_field} = {value};'
+                    mutate = f'        {local_name}.{snake_field} = {value};'
                 else:
                     op_char = op[0]
-                    mutate = f'        s.{snake_field} = s.{snake_field} {op_char} {value};'
-                store = f'        self.{snake_var}(&{converted_key}).set(&s);'
+                    mutate = f'        {local_name}.{snake_field} = {local_name}.{snake_field} {op_char} {value};'
+                store = f'        self.{snake_var}(&{converted_key}).set({local_name});'
                 return f'{load}\n{mutate}\n{store}'
             elif struct_var in getattr(self, '_storage_var_names', set()):
                 # Direct storage struct var → load-mutate-store without key
-                load = f'        let mut s = self.{snake_var}().get();'
+                local_name = self._struct_value_local_name(struct_var)
+                load = f'        let mut {local_name} = self.{snake_var}().get();'
                 if op == '=':
-                    mutate = f'        s.{snake_field} = {value};'
+                    mutate = f'        {local_name}.{snake_field} = {value};'
                 else:
                     op_char = op[0]
-                    mutate = f'        s.{snake_field} = s.{snake_field} {op_char} {value};'
-                store = f'        self.{snake_var}().set(&s);'
+                    mutate = f'        {local_name}.{snake_field} = {local_name}.{snake_field} {op_char} {value};'
+                store = f'        self.{snake_var}().set({local_name});'
                 return f'{load}\n{mutate}\n{store}'
             else:
                 # Local var → direct mutation
@@ -1497,6 +1500,54 @@ class Transpiler:
 
     def _lookup_var_type(self, name: str) -> str | None:
         return self._current_var_types.get(name) or self._storage_var_types.get(name)
+
+    def _struct_value_local_name(self, mapper_name: str) -> str:
+        snake_name = camel_to_snake(mapper_name)
+        if snake_name.endswith("ies"):
+            snake_name = f"{snake_name[:-3]}y"
+        elif snake_name.endswith("s") and len(snake_name) > 1:
+            snake_name = snake_name[:-1]
+        return f"{snake_name}_val"
+
+    def _convert_expression_with_struct_field_reads(self, expr: str) -> tuple[list[str], str]:
+        """Hoist single-level mapping struct field reads into local bindings.
+
+        MultiversX storage mappers do not support direct field access like
+        self.stakes(&token_id).get().active in every context where Solidity
+        allows stakes[tokenId].active.  The common safe shape is:
+
+            let stake_val = self.stakes(&token_id).get();
+            require!(!stake_val.active, "...");
+
+        TODO: support deeply nested struct fields and nested mapping keys with
+        a real expression AST instead of regex-level matching.
+        """
+        bindings: list[str] = []
+        seen: dict[tuple[str, str], str] = {}
+
+        def replace_mapping_field(m: re.Match) -> str:
+            mapper_name = m.group(1)
+            key = m.group(2).strip()
+            field = m.group(3)
+            if mapper_name not in self._mapping_var_names:
+                return m.group(0)
+
+            seen_key = (mapper_name, key)
+            local_name = seen.get(seen_key)
+            if local_name is None:
+                local_name = self._struct_value_local_name(mapper_name)
+                if local_name in seen.values():
+                    local_name = f"{local_name}_{len(seen) + 1}"
+                seen[seen_key] = local_name
+                converted_key = self._convert_expression(key)
+                bindings.append(
+                    f'        let {local_name} = self.{camel_to_snake(mapper_name)}(&{converted_key}).get();'
+                )
+
+            return f'{local_name}.{camel_to_snake(field)}'
+
+        rewritten = re.sub(r'\b(\w+)\[([^\]\[]+)\]\.(\w+)\b', replace_mapping_field, expr)
+        return bindings, self._convert_expression(rewritten)
 
     def _convert_bytes_cast(self, type_name: str, inner_raw: str, converted_inner: str) -> str:
         """Convert bytes/bytesN casts to ManagedBuffer when the input shape is knowable."""

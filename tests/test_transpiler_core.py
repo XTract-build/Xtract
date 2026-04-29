@@ -421,11 +421,56 @@ def test_struct_field_update_generates_set():
     assert "pub trait StructFieldUpdate" in actual
     assert "#[storage_mapper(\"listings\")]" in actual
     # activate function: load-mutate-store for bool field
-    assert "let mut s = self.listings(&seller).get();" in actual
-    assert "s.active = true;" in actual
-    assert "self.listings(&seller).set(&s);" in actual
+    assert "let mut listing_val = self.listings(&seller).get();" in actual
+    assert "listing_val.active = true;" in actual
+    assert "self.listings(&seller).set(listing_val);" in actual
     # setPrice function: load-mutate-store for uint field
-    assert "s.price = newPrice;" in actual
+    assert "listing_val.price = newPrice;" in actual
+
+
+def test_mapping_struct_field_write_uses_load_mutate_store():
+    sol = """
+    pragma solidity ^0.8.0;
+
+    contract StakeTest {
+        struct Stake {
+            bool active;
+        }
+
+        mapping(uint256 => Stake) public stakes;
+
+        function activate(uint256 tokenId) public {
+            stakes[tokenId].active = true;
+        }
+    }
+    """
+    actual = Transpiler().convert(sol)
+
+    assert "let mut stake_val = self.stakes(&tokenId).get();" in actual
+    assert "stake_val.active = true;" in actual
+    assert "self.stakes(&tokenId).set(stake_val);" in actual
+
+
+def test_mapping_struct_field_read_in_require_uses_local_binding():
+    sol = """
+    pragma solidity ^0.8.0;
+
+    contract StakeTest {
+        struct Stake {
+            bool active;
+        }
+
+        mapping(uint256 => Stake) public stakes;
+
+        function activate(uint256 tokenId) public {
+            require(!stakes[tokenId].active, "Already active");
+        }
+    }
+    """
+    actual = Transpiler().convert(sol)
+
+    assert "let stake_val = self.stakes(&tokenId).get();" in actual
+    assert 'require!(!stake_val.active, "Already active");' in actual
 
 
 def test_do_while_generates_loop_break():

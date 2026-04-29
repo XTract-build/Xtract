@@ -18,16 +18,16 @@ pub trait StructFieldUpdate {
 
     #[endpoint]
     fn activate(&self, seller: ManagedAddress<Self::Api>) {
-        let mut s = self.listings(&seller).get();
-        s.active = true;
-        self.listings(&seller).set(&s);
+        let mut listing_val = self.listings(&seller).get();
+        listing_val.active = true;
+        self.listings(&seller).set(listing_val);
     }
 
     #[endpoint]
     fn set_price(&self, seller: ManagedAddress<Self::Api>, newPrice: BigUint<Self::Api>) {
-        let mut s = self.listings(&seller).get();
-        s.price = newPrice;
-        self.listings(&seller).set(&s);
+        let mut listing_val = self.listings(&seller).get();
+        listing_val.price = newPrice;
+        self.listings(&seller).set(listing_val);
     }
 
 }
