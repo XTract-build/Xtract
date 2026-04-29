@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass
 from pathlib import Path
 import urllib.request
@@ -58,10 +59,16 @@ def create_wallet(output: Path = DEFAULT_WALLET_PATH) -> WalletInfo:
     except ImportError:
         raise ImportError("Run: pip install xtract[deploy]")
 
-    if output.exists():
+    output.parent.mkdir(parents=True, exist_ok=True)
+
+    # Securely create the file with restricted permissions (0o600)
+    # and atomize the existence check.
+    try:
+        fd = os.open(output, os.O_CREAT | os.O_WRONLY | os.O_EXCL, 0o600)
+        os.close(fd)
+    except FileExistsError:
         raise FileExistsError(f"Wallet already exists at {output}. Will not overwrite.")
 
-    output.parent.mkdir(parents=True, exist_ok=True)
     mnemonic = Mnemonic.generate()
     account = Account(mnemonic.derive_key(0))
     account.save_to_pem(output)
