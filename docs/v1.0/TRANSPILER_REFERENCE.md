@@ -86,6 +86,8 @@ Numeric casts to bytes require manual review because the correct byte order and 
 | `new ContractType()` | `ManagedAddress::zero()` + TODO comment | stub with warning |
 | Mapping read in expression | `.get()` appended automatically | scoped to known storage vars |
 | Mapping write (assignment) | `.set()` emitted | |
+| Mapping struct field read | local `.get()` binding first | `let stake_val = self.stakes(&token_id).get(); require!(!stake_val.active, "...");` |
+| Mapping struct field write | load-mutate-store | `stakes[tokenId].active = true` becomes load local, mutate field, then `.set(local)` |
 | Function parameter `.clone()` | emitted for all params, not just `_to`/`_from` | uses actual param introspection |
 | `array[]` storage variable | `VecMapper<T>` trait fn | declared as `fn name(&self) -> VecMapper<T>;` |
 | `array.push(v)` | `self.array().push(&v)` | |
@@ -102,6 +104,25 @@ Numeric casts to bytes require manual review because the correct byte order and 
 | `type(uint256).min` | `BigUint::zero()` | |
 | `type(int256).max` | `BigInt::from(i64::MAX)` | TODO comment: true max is 2^255-1 |
 | `type(int256).min` | `BigInt::from(i64::MIN)` | TODO comment: true min is -(2^255) |
+
+## Struct Field Access on Storage Mappers
+
+MultiversX storage mappers do not support direct mutation of a field through the mapper call. For single-level struct values stored in mappings, the transpiler emits a load-mutate-store sequence:
+
+```rust
+let mut stake_val = self.stakes(&token_id).get();
+stake_val.active = true;
+self.stakes(&token_id).set(stake_val);
+```
+
+Struct field reads in expressions are hoisted into a local binding before the expression that uses them:
+
+```rust
+let stake_val = self.stakes(&token_id).get();
+require!(!stake_val.active, "Already active");
+```
+
+This applies to common single-level patterns such as `stakes[tokenId].active`. Deeply nested struct fields and nested mapping keys still require manual review.
 
 ---
 

@@ -60,6 +60,7 @@ v1.0 adds the full deployment pipeline on top of the transpiler. See [docs/v1.0/
 ### Mapping Support
 - **Single mappings**: `mapping(address => uint256)` → storage mappers with key parameters
 - **Nested mappings**: `mapping(address => mapping(address => uint256))` → multi-key storage mappers
+- **Struct values in mappings**: Single-level field reads and writes use MultiversX-safe local load-mutate-store code instead of direct mapper field access
 
 ### Control Flow
 - **If/else statements**: Full if/else transpilation with proper Rust syntax
@@ -200,6 +201,7 @@ cat MyStorage.rs
 ### Fully Supported
 - Contract declarations, constructors (with parameters) mapped to `#[init]`, state variables
 - Single and nested mappings
+- Single-level struct field access on mapping values, emitted as local `.get()` bindings for reads and load-mutate-store for writes
 - Events with indexed parameters
 - Custom errors, structs
 - Functions: public/external write functions map to `#[endpoint]`, public/external `view` and `pure` functions map to `#[view]`, and internal/private functions remain helper methods without endpoint annotations

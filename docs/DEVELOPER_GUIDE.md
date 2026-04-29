@@ -234,11 +234,31 @@ The transpiler handles this automatically:
 > **Why `+ 1`?**  `VecMapper::get` is 1-indexed.  Index 0 is out-of-bounds in MultiversX.
 > If your Solidity code already adjusts indices, review the generated `+ 1` manually.
 
+## Struct Field Access on Storage Mappers
+
+MultiversX storage mappers return values through mapper methods; generated code cannot assign directly through a mapper field like `self.stakes(&token_id).active`. For common single-level mapping values, the transpiler loads the struct into a local, mutates the local field, then stores the whole value back:
+
+```rust
+let mut stake_val = self.stakes(&token_id).get();
+stake_val.active = true;
+self.stakes(&token_id).set(stake_val);
+```
+
+Reads inside expressions are also hoisted so the expression uses a normal local:
+
+```rust
+let stake_val = self.stakes(&token_id).get();
+require!(!stake_val.active, "Already active");
+```
+
+Developers extending this area should keep the read and write paths aligned: detect the Solidity mapper/key/field once, convert the key through `_convert_expression`, use a stable local name based on the mapper, and avoid emitting direct field access on mapper calls. Nested mapping keys and deeply nested struct fields still need a proper AST-level implementation.
+
 ## Supported Solidity Features
 
 ### Fully supported
 - Contract declarations, constructors, state variables
 - Single and nested mappings
+- Single-level struct field reads/writes on mapping values using local load-mutate-store code
 - Dynamic arrays (`T[]`) — VecMapper with full push/pop/length/index support
 - Events with indexed parameters
 - Custom errors, structs
