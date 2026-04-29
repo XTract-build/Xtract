@@ -202,7 +202,7 @@ cat MyStorage.rs
 - Single and nested mappings
 - Events with indexed parameters
 - Custom errors, structs
-- Functions (public, private, view, payable), including `fallback()` and payable `receive()` mapped to `#[fallback]`
+- Functions: public/external write functions map to `#[endpoint]`, public/external `view` and `pure` functions map to `#[view]`, and internal/private functions remain helper methods without endpoint annotations
 - `msg.value` → `self.call_value().egld_value()`
 - `msg.sender` → `self.blockchain().get_caller()`
 - Function modifiers — full pre/post body inlining, including parameterized modifiers such as `onlyRole(ADMIN_ROLE)` and `nonReentrant`

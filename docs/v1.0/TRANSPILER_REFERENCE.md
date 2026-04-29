@@ -63,7 +63,7 @@ Numeric casts to bytes require manual review because the correct byte order and 
 | Structs | Rust struct with codec derives | |
 | Modifiers | inlined `require!()` + pre/post statements | pre and post body statements both emitted |
 | `nonReentrant` | `locked.set(true)` / `locked.set(false)` around body | |
-| Function visibility | `pub` / private / `#[view]` / `#[endpoint]` | |
+| Function visibility | public/external write functions use `#[endpoint]`; public/external `view` or `pure` functions use `#[view]`; internal/private helpers have no endpoint annotation | |
 | Payable functions | `#[payable("EGLD")]` | |
 | `fallback() external` | `#[fallback] fn call(&self)` | emits `TranspilationWarning` for manual review |
 | `receive() external payable` | `#[payable("EGLD")]` + `#[fallback] fn call(&self)` | emits `TranspilationWarning` for manual review |
@@ -314,6 +314,15 @@ fn init(&self, _owner: ManagedAddress<Self::Api>, _initialSupply: BigUint<Self::
 ```
 
 Parameter names are preserved as-is (leading underscores included). Types are converted via the standard type mapping table (see [Type Mapping](#type-mapping)).
+
+## Function Visibility Mapping
+
+| Solidity function | Generated MultiversX Rust |
+|---|---|
+| `public` / `external` | `#[endpoint]` for state-changing functions |
+| `public view` / `external view` | `#[view(name)]` |
+| `public pure` / `external pure` | `#[view(name)]` |
+| `internal` / `private` | helper method with no endpoint or view annotation |
 
 ## Modifier Inlining
 

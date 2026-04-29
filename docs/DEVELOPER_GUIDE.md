@@ -242,7 +242,7 @@ The transpiler handles this automatically:
 - Dynamic arrays (`T[]`) — VecMapper with full push/pop/length/index support
 - Events with indexed parameters
 - Custom errors, structs
-- Public/private/view/payable functions, including `fallback()` and payable `receive()`
+- Public/external endpoints, public/external `view` and `pure` views, internal/private helper functions, including `fallback()` and payable `receive()`
 - Function modifiers (`onlyOwner`, custom, parameterized modifiers with call-site argument substitution)
 - Basic inheritance (`contract A is B, C`) as a supertrait stub with manual integration required
 - `require` / `revert`, if/else, for loops, while loops, do-while loops
@@ -277,6 +277,19 @@ Solidity `fallback()` and `receive()` declarations are converted to the Multiver
 | `receive() external payable` | `#[payable("EGLD")]` + `#[fallback] fn call(&self)` |
 
 Both mappings emit a `TranspilationWarning`. Review converted handlers manually because Solidity has separate dispatch for empty calldata payments and general fallback calls, while the generated MultiversX contract uses the `call` fallback entry point.
+
+### Function visibility mapping
+
+During conversion, visibility controls whether a Solidity function becomes a callable MultiversX endpoint:
+
+| Solidity visibility and mutability | Generated MultiversX Rust |
+|---|---|
+| `public` / `external` | `#[endpoint]` for state-changing functions |
+| `public view` / `external view` | `#[view(name)]` |
+| `public pure` / `external pure` | `#[view(name)]` |
+| `internal` / `private` | helper method with no endpoint or view annotation |
+
+Internal and private Solidity functions are emitted for use by generated contract code, but they are not exposed as blockchain entry points. Pure functions are read-only and therefore use the same MultiversX `#[view]` annotation as Solidity view functions.
 
 ### Modifier inlining
 
