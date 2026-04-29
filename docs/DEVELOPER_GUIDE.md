@@ -243,7 +243,7 @@ The transpiler handles this automatically:
 - Events with indexed parameters
 - Custom errors, structs
 - Public/private/view/payable functions, including `fallback()` and payable `receive()`
-- Function modifiers (`onlyOwner`, custom)
+- Function modifiers (`onlyOwner`, custom, parameterized modifiers with call-site argument substitution)
 - Basic inheritance (`contract A is B, C`) as a supertrait stub with manual integration required
 - `require` / `revert`, if/else, for loops, while loops, do-while loops
 - Ternary expressions (`cond ? a : b` → `if cond { a } else { b }`)
@@ -278,6 +278,18 @@ Solidity `fallback()` and `receive()` declarations are converted to the Multiver
 
 Both mappings emit a `TranspilationWarning`. Review converted handlers manually because Solidity has separate dispatch for empty calldata payments and general fallback calls, while the generated MultiversX contract uses the `call` fallback entry point.
 
+### Modifier inlining
+
+Modifier definitions are parsed separately from function bodies. During function conversion, each applied modifier is inlined before the endpoint body for statements before `_;` and after the endpoint body for statements after `_;`.
+
+Parameterized modifiers preserve their definition parameter names and their call-site arguments. Before conversion, parsed modifier statements substitute each parameter token with the matching call-site argument, so `onlyRole(adminRole)` inlines `role` references as `adminRole`.
+
+Known edge cases:
+
+- Argument substitution is token-based, not AST-based. It handles normal identifier parameters but should be reviewed for very complex modifier expressions.
+- Modifier string literals are not rewritten during substitution.
+- Inherited modifiers are not automatically imported; inherited contracts still require manual integration of parent modifiers and storage.
+
 ### Contract inheritance
 
 The transpiler currently treats Solidity inheritance as an honest Rust supertrait stub. For example, `contract Child is Parent` emits `pub trait Child: Parent` plus a `TranspilationWarning` explaining that parent storage mappers and methods are not automatically inherited.
@@ -294,7 +306,7 @@ Planned follow-up: replace the stub with explicit trait composition, including p
 ### Requires manual review
 - Complex arithmetic expressions
 - External contract calls
-- Inheritance supertrait stubs; parent storage mappers and methods must be wired manually
+- Inheritance supertrait stubs; parent storage mappers, methods, and modifiers must be wired manually
 
 ### Cleanly stripped with TODO markers
 - **Inline assembly** — replaced with `// TODO: inline assembly removed — no MultiversX equivalent`. Requires manual rewrite using Rust/SC APIs.
@@ -312,6 +324,7 @@ Planned follow-up: replace the stub with explicit trait composition, including p
 ### Supported since v1.0
 - Do-while loops → `loop { ... if !cond { break } }`
 - `nonReentrant` modifier → full lock/unlock wrapper inlined
+- Parameterized modifiers → definition parameters are replaced with call-site arguments before inlining
 - `delete var` → `.clear()`
 - `unchecked { }` → passthrough with comment
 - Constructor parameters → emitted in `#[init]` signature with type mapping

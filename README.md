@@ -68,7 +68,7 @@ v1.0 adds the full deployment pipeline on top of the transpiler. See [docs/v1.0/
 - **Payable functions**: Automatic `#[payable("EGLD")]` annotation
 
 ### Advanced Features
-- **Function modifiers**: `onlyOwner`, `whenNotPaused`, custom modifiers
+- **Function modifiers**: `onlyOwner`, `whenNotPaused`, custom modifiers, including parameterized modifiers with argument substitution
 - **Basic inheritance**: Contract inheritance with supertrait stub generation and warnings for required manual integration
 - **Enhanced diagnostics**: Detailed warnings for unsupported features and semantic differences, including `int256` casts that rely on MultiversX `BigInt` negative values
 
@@ -76,7 +76,7 @@ v1.0 adds the full deployment pipeline on top of the transpiler. See [docs/v1.0/
 
 `int8`, `int16`, `int32`, and `int64` casts map to Rust `i8`, `i16`, `i32`, and `i64`. `int256` maps to MultiversX `BigInt<Self::Api>`, which has more limited negative number support than Solidity `int256`; review warnings on negative literals or variable casts before relying on equivalent storage or arithmetic behavior.
 
-**Test Coverage**: 100% unit test success across 50 Solidity contracts and 148 pytest cases.
+**Test Coverage**: 100% unit test success across 50 Solidity contracts and 149 pytest cases.
 
 ## TypeScript SDK
 
@@ -205,7 +205,7 @@ cat MyStorage.rs
 - Functions (public, private, view, payable), including `fallback()` and payable `receive()` mapped to `#[fallback]`
 - `msg.value` → `self.call_value().egld_value()`
 - `msg.sender` → `self.blockchain().get_caller()`
-- Function modifiers — full pre/post body inlining, including `nonReentrant`
+- Function modifiers — full pre/post body inlining, including parameterized modifiers such as `onlyRole(ADMIN_ROLE)` and `nonReentrant`
 - Basic inheritance (`contract A is B, C`) as a supertrait stub; manually integrate parent storage mappers and methods
 - `require` / `revert`, if/else, for loops, while loops, do-while loops
 - Ternary expressions (`cond ? a : b` → `if cond { a } else { b }`)

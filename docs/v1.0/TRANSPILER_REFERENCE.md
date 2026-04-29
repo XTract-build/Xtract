@@ -341,3 +341,20 @@ fn deposit(&self, token: ManagedAddress<Self::Api>, amount: BigUint<Self::Api>) 
     self.locked().set(false);
 }
 ```
+
+Parameterized modifiers are also supported. The transpiler records the modifier definition parameter names and the function call-site arguments, then substitutes those arguments before converting the inlined statements:
+
+**Solidity:**
+```solidity
+modifier onlyRole(bytes32 role) {
+    require(role == adminRole, "No role");
+    _;
+}
+
+function foo() public onlyRole(expectedRole) { ... }
+```
+
+**Generated Rust excerpt:**
+```rust
+require!(self.expected_role().get() == self.admin_role().get(), "No role");
+```
