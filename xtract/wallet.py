@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass
 from pathlib import Path
 import urllib.request
@@ -16,7 +17,7 @@ EXPLORER_URLS = {
     "testnet": "https://testnet-explorer.multiversx.com",
 }
 
-FAUCET_API_URL = "https://r3d4.fr/faucet"
+FAUCET_API_URL = os.environ.get("XTRACT_FAUCET_API_URL", "https://r3d4.fr/faucet")
 
 
 @dataclass
