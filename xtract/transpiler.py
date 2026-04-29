@@ -44,6 +44,9 @@ LIBRARY_FUNCTION_MAP = {
     ("Address",  "isContract"): (1, lambda args: f"!{args[0]}.is_zero()"),
 }
 
+KNOWN_LIBS = {k[0] for k in LIBRARY_FUNCTION_MAP}
+KNOWN_METHODS = {k[1] for k in LIBRARY_FUNCTION_MAP}
+
 SOLIDITY_TO_MVX_TYPE = {
     "uint256": "BigUint<Self::Api>",
     "uint128": "BigUint<Self::Api>",
@@ -1261,8 +1264,6 @@ class Transpiler:
         - Static:      SafeMath.add(a, b)  -> a + b
         - Method-call: a.add(b) when 'using SafeMath for <type>' is active -> a + b
         """
-        known_libs = {k[0] for k in LIBRARY_FUNCTION_MAP}
-        known_methods = {k[1] for k in LIBRARY_FUNCTION_MAP}
         active_libraries = set(self._using_for.values())
 
         pattern = re.compile(r'\b(\w+)\.(\w+)\s*\(')
@@ -1292,13 +1293,13 @@ class Transpiler:
 
             transformed: str | None = None
 
-            if first in known_libs:
+            if first in KNOWN_LIBS:
                 # Static library call: SafeMath.add(a, b)
                 key = (first, method_name)
                 if key in LIBRARY_FUNCTION_MAP:
                     _, fn = LIBRARY_FUNCTION_MAP[key]
                     transformed = fn(self._split_args(args_str))
-            elif method_name in known_methods:
+            elif method_name in KNOWN_METHODS:
                 # Method-call via using-for: a.add(b)
                 for lib_name in active_libraries:
                     key = (lib_name, method_name)
@@ -1940,9 +1941,8 @@ class Transpiler:
             self._using_for[type_name] = lib_name
 
         # Warn about libraries not in LIBRARY_FUNCTION_MAP
-        known_lib_names = {k[0] for k in LIBRARY_FUNCTION_MAP}
         for type_name, lib_name in self._using_for.items():
-            if lib_name not in known_lib_names:
+            if lib_name not in KNOWN_LIBS:
                 self._warnings.append(
                     TranspilationWarning(
                         f"Library {lib_name} not recognized — method calls on {type_name} may not compile"

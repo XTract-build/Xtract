@@ -13,6 +13,7 @@ It tests 50 different contract patterns including:
 import json
 import subprocess
 import sys
+import os
 from pathlib import Path
 import pytest
 
@@ -448,10 +449,13 @@ def test_unknown_library_warning():
 def test_json_flag_output():
     """Test --json flag outputs valid JSON with expected fields"""
     sol_path = "test_cases/solidity/ERC20Token.sol"
+    env = os.environ.copy()
+    env["PYTHONPATH"] = "."
     result = subprocess.run(
-        [sys.executable, "-m", "xtract.cli", "--json", sol_path],
+        ["python3", "-m", "xtract.cli", "--json", sol_path],
         capture_output=True,
         text=True,
+        env=env,
     )
     output = json.loads(result.stdout)
 
