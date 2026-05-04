@@ -610,7 +610,7 @@ def test_json_flag_output():
     """Test --json flag outputs valid JSON with expected fields"""
     sol_path = "test_cases/solidity/ERC20Token.sol"
     result = subprocess.run(
-        [sys.executable, "-m", "xtract.cli", "--json", sol_path],
+        [sys.executable, "-m", "xtract.cli", "transpile", "--json", sol_path],
         capture_output=True,
         text=True,
     )
