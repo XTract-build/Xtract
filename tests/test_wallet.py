@@ -1,3 +1,4 @@
+import os
 import sys
 from unittest.mock import MagicMock, patch
 
@@ -58,3 +59,31 @@ def test_create_wallet_success(tmp_path):
     mock_mnemonic.derive_key.assert_called_once_with(0)
     mock_sdk.Account.assert_called_once_with("secret_key")
     mock_account.save_to_pem.assert_called_once_with(wallet_path)
+
+
+def test_create_wallet_file_is_restricted_before_save_to_pem(tmp_path):
+    wallet_path = tmp_path / "wallet.pem"
+    observed_permissions = []
+
+    mock_sdk = MagicMock()
+    mock_mnemonic = MagicMock()
+    mock_mnemonic.get_text.return_value = "mnemonic"
+    mock_mnemonic.derive_key.return_value = "secret_key"
+
+    mock_account = MagicMock()
+    mock_account.address.to_bech32.return_value = "erd1address"
+
+    mock_sdk.Mnemonic.generate.return_value = mock_mnemonic
+    mock_sdk.Account.return_value = mock_account
+
+    def save_to_pem(path):
+        observed_permissions.append(os.stat(path).st_mode & 0o777)
+        path.write_text("pem")
+
+    mock_account.save_to_pem.side_effect = save_to_pem
+
+    with patch.dict(sys.modules, {"multiversx_sdk": mock_sdk}):
+        create_wallet(output=wallet_path)
+
+    assert observed_permissions == [0o600]
+    assert (wallet_path.stat().st_mode & 0o777) == 0o400
