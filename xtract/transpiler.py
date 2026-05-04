@@ -1279,10 +1279,13 @@ class Transpiler:
                     if converted:
                         body_lines.append(converted)
 
-                body_code = '\n'.join(body_lines) if body_lines else '            // empty block'
+                if not body_lines:
+                    body_lines.append('            // empty block')
                 # Add update at end of loop body
                 if converted_update:
-                    body_code += f'\n            {converted_update};'
+                    body_lines.append(f'            {converted_update};')
+
+                body_code = '\n'.join(body_lines)
 
                 init_line = f'        let mut {converted_init};\n' if converted_init else ''
                 return f'{init_line}        while {converted_condition} {{\n{body_code}\n        }}'
