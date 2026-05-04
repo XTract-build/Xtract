@@ -4,7 +4,7 @@ import io
 import urllib.error
 from unittest.mock import patch, MagicMock
 
-from xtract.wallet import request_faucet, FaucetResult, FAUCET_API_URL
+from xtract.wallet import request_faucet, FAUCET_API_URL
 
 
 def _make_response(body: str, status: int = 200):
