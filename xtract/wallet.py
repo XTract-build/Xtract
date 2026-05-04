@@ -17,7 +17,7 @@ EXPLORER_URLS = {
     "testnet": "https://testnet-explorer.multiversx.com",
 }
 
-FAUCET_API_URL = "https://r3d4.fr/faucet"
+FAUCET_API_URL = os.environ.get("XTRACT_FAUCET_API_URL", "https://r3d4.fr/faucet")
 
 
 @dataclass
